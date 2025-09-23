@@ -1,4 +1,4 @@
-# NAMA PROJECT (ex: LibraryOfTenizen)
+# LibraryOfTenizen
 
 ## FITUR
 
