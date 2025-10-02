@@ -1,0 +1,284 @@
+/* dasar */
+:root {
+  --card-radius: 16px;
+  --card-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+  --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+/* body putih (latar utama) */
+html, body, #root {
+  height: 100%;
+}
+body {
+  margin: 0;
+  background: #f8f9fa;
+  font-family: 'Inter', system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  color: #333;
+}
+
+/* wrapper halaman */
+.login-page {
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* WAVE di belakang - gradient ungu seperti screenshot */
+.wave {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 45vh;
+  z-index: 0;
+  pointer-events: none;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 0 0 40% 40%;
+  overflow: hidden;
+}
+
+.wave::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 320'%3E%3Cpath fill='%23ffffff' fill-opacity='0.2' d='M0,96L48,112C96,128,192,160,288,160C384,160,480,128,576,112C672,96,768,96,864,112C960,128,1056,160,1152,160C1248,160,1344,128,1392,112L1440,96L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z'%3E%3C/path%3E%3C/svg%3E");
+  background-size: cover;
+  background-position: center;
+}
+
+/* CONTENT (di atas wave) */
+.content {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* ilustrasi kiri */
+.illustration-wrap {
+  text-align: center;
+  padding: 2rem;
+}
+
+.illustration-wrap img {
+  max-width: 320px;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+  border-radius: 20px;
+}
+
+/* CARD login/register */
+.login-card {
+  width: 100%;
+  max-width: 420px;
+  border: none;
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
+  background: #fff;
+  padding: 2.5rem 2rem;
+  margin: 0 auto;
+}
+
+.login-card h4 {
+  color: #2d3748;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  font-size: 1.5rem;
+}
+
+.login-card .subtitle {
+  color: #718096;
+  font-size: 0.9rem;
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+/* input & button styling */
+.form-control {
+  border-radius: 12px;
+  padding: 1rem;
+  border: 2px solid #e2e8f0;
+  background: #fff;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  margin-bottom: 1rem;
+}
+
+.form-control:focus {
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.input-group {
+  margin-bottom: 1rem;
+}
+
+.input-group .btn {
+  border-radius: 0 12px 12px 0;
+  border: 2px solid #e2e8f0;
+  border-left: none;
+  background: #fff;
+}
+
+.input-group .form-control {
+  border-right: none;
+  border-radius: 12px 0 0 12px;
+  margin-bottom: 0;
+}
+
+/* Checkbox styling */
+.form-check {
+  margin-bottom: 1.5rem;
+}
+
+.form-check-input:checked {
+  background-color: #667eea;
+  border-color: #667eea;
+}
+
+.form-check-label {
+  color: #4a5568;
+  font-size: 0.9rem;
+}
+
+/* Forgot password link */
+.forgot-password {
+  color: #667eea;
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.forgot-password:hover {
+  color: #5a6fd8;
+  text-decoration: underline;
+}
+
+/* tombol utama dengan gradient */
+.btn-primary {
+  border-radius: 12px;
+  padding: 1rem;
+  font-weight: 600;
+  font-size: 1rem;
+  border: none;
+  background: var(--primary-gradient);
+  transition: all 0.3s ease;
+  width: 100%;
+  margin-bottom: 1.5rem;
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+}
+
+/* Link register/login */
+.auth-link {
+  color: #667eea;
+  text-decoration: none;
+  font-weight: 600;
+  margin-left: 4px;
+  background: var(--primary-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.auth-link:hover {
+  text-decoration: underline;
+}
+
+/* Logo styling */
+.logo {
+  max-width: 120px !important;
+  margin-bottom: 1rem !important;
+}
+
+/* RESPONSIVE adjustments */
+@media (max-width: 768px) {
+  .login-page {
+    padding: 1rem;
+  }
+  
+  .wave {
+    height: 35vh;
+    border-radius: 0 0 30% 30%;
+  }
+  
+  .login-card {
+    padding: 2rem 1.5rem;
+    margin: 1rem auto;
+  }
+  
+  .illustration-wrap {
+    display: none;
+  }
+}
+
+@media (min-width: 769px) {
+  /* .content .row {
+    min-height: 80vh;
+  } */
+  
+  .login-card {
+    margin-left: 0;
+  }
+}
+
+/* Form select styling */
+.form-select {
+    border-radius: 12px;
+    padding: 1rem;
+    border: 2px solid #e2e8f0;
+    background: #fff;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%23666' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 1rem center;
+    background-size: 16px;
+    height: 56px; /* Sesuaikan tinggi dengan input lainnya */
+}
+
+.form-select:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+/* Pastikan row untuk select memiliki gap yang konsisten */
+.row.g-2 {
+    margin-left: -4px;
+    margin-right: -4px;
+}
+
+.row.g-2 > [class*="col-"] {
+    padding-left: 4px;
+    padding-right: 4px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .form-select {
+        height: 52px;
+        font-size: 0.9rem;
+    }
+    
+    .row.g-2 {
+        margin-left: -3px;
+        margin-right: -3px;
+    }
+    
+    .row.g-2 > [class*="col-"] {
+        padding-left: 3px;
+        padding-right: 3px;
+    }
+}
