@@ -1,16 +1,54 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Home, Book, List, LogOut, Menu, X, Search, BookOpen, GraduationCap, Heart, TrendingUp, Users, ArrowRight } from 'lucide-react';
+import { Home, Book, List, LogOut, Menu, X, Search, BookOpen, GraduationCap, Heart, TrendingUp, Users } from 'lucide-react';
+import "../styles/dashboard.css"; 
 
 // ===============================================
 // API Configuration & Data Setup
+// (Bagian ini tidak berubah, MOCK API tetap sama)
 // ===============================================
 
-// *** GANTI DENGAN BASE URL API NYATA ANDA ***
 const API_BASE_URL = "http://127.0.0.1:8000/api";
 const BOOKS_API_URL = `${API_BASE_URL}/books`;
 
+// --- DATA MOCK API SESUAI INPUT ANDA ---
+const MOCK_API_DATA = {
+    status: true,
+    message: "Ini adalah data semua buku!",
+    data: [
+        { id: 3, title: "Belajar Laravel Dengan Almer", author: "Almer Riwanto", description: "Seorang anak muda yang sangat ingin menjadi programer dan akhirnya membuat sebuah course", cover_image: "books/almer.jpg", category_id: 3, stock: 12 },
+        { id: 4, title: "Atomic Habits", author: "James Clear", description: "Buku self-help tentang membangun kebiasaan positif.", cover_image: "books/atomic_habits.jpg", category_id: 2, stock: 11 },
+        { id: 5, title: "The Subtle Art of Not Giving a F*ck", author: "Mark Manson", description: "Buku self-help dengan pendekatan realistis.", cover_image: "books/subtle_art.jpg", category_id: 2, stock: 9 },
+        { id: 6, title: "Spare", author: "Prince Harry", description: "Autobiografi Prince Harry tentang hidup dan keluarganya.", cover_image: "books/spare.jpg", category_id: 3, stock: 10 },
+        { id: 7, title: "Becoming", author: "Michelle Obama", description: "Memoar mantan ibu negara Amerika Serikat.", cover_image: "books/becoming.jpg", category_id: 3, stock: 7 },
+        { id: 8, title: "The Midnight Library", author: "Matt Haig", description: "Novel tentang pilihan hidup dan kehidupan alternatif.", cover_image: "books/midnight_library.jpg", category_id: 4, stock: 7 },
+        { id: 9, title: "Harry Potter and the Sorcerer's Stone", author: "J.K. Rowling", description: "Buku fantasi klasik tentang dunia sihir.", cover_image: "books/harry_potter_1.jpg", category_id: 4, stock: 14 },
+        { id: 10, title: "Dune", author: "Frank Herbert", description: "Novel science fiction klasik di planet gurun Arrakis.", cover_image: "books/dune.jpg", category_id: 5, stock: 6 },
+        { id: 11, title: "Project Hail Mary", author: "Andy Weir", description: "Science fiction dengan misi penyelamatan umat manusia.", cover_image: "books/project_hail_mary.jpg", category_id: 5, stock: 8 },
+        { id: 12, title: "The Guest List", author: "Lucy Foley", description: "Novel misteri pembunuhan di pesta pernikahan.", cover_image: "books/the_guest_list.jpg", category_id: 6, stock: 5 },
+        { id: 13, title: "Verity", author: "Colleen Hoover", description: "Thriller psikologis penuh misteri.", cover_image: "books/verity.jpg", category_id: 7, stock: 7 },
+        { id: 14, title: "The Haunting of Hill House", author: "Shirley Jackson", description: "Novel horor klasik tentang rumah berhantu.", cover_image: "books/hill_house.jpg", category_id: 8, stock: 4 },
+        { id: 15, title: "Sapiens: A Brief History of Humankind", author: "Yuval Noah Harari", description: "Sejarah umat manusia dari zaman purba hingga modern.", cover_image: "books/sapiens.jpg", category_id: 9, stock: 10 },
+        // Data ke-16, dst. akan di sini
+    ],
+};
+
+// SIMULASI AXIOS 
+const axios = {
+    get: (url) => {
+        return new Promise((resolve) => {
+            setTimeout(() => {
+                if (url === BOOKS_API_URL) {
+                    resolve({ data: MOCK_API_DATA });
+                } else {
+                    resolve({ data: { status: false, message: "URL tidak ditemukan", data: [] } });
+                }
+            }, 500); // Waktu loading dikurangi agar lebih cepat
+        });
+    }
+};
+
+// ... (categoryMap, categories, allMenuItems, COVER_STYLES, getBookCoverStyle tetap sama) ...
 const categoryMap = {
-    // Sesuaikan mapping ini dengan ID kategori di database Laravel Anda
     2: 'psychology',
     3: 'nonfiction',
     4: 'fantasy',
@@ -50,89 +88,114 @@ const getBookCoverStyle = (id) => {
     return COVER_STYLES[id % COVER_STYLES.length];
 };
 
-// ===============================================
-// DASHBOARD COMPONENT (Berisi UI utama)
-// ===============================================
 
-const DashboardContent = ({ userData, userToken, handleLogout, isError, setIsError }) => {
+const Dashboard = () => {
     // State untuk UI/Navigasi
     const [sidebarOpen, setSidebarOpen] = useState(false);
-    const [activeMenu, setActiveMenu] = useState('books'); 
+    const [activeMenu, setActiveMenu] = useState('books'); // Default ke Daftar Buku
     const [selectedCategory, setSelectedCategory] = useState('all');
 
     // State untuk Data
     const [books, setBooks] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [isError, setIsError] = useState(null);
+    // Default user: Anggota Perpustakaan
+    const [userData, setUserData] = useState({ name: 'Anggota Perpustakaan', role: 'member' }); 
 
+    // Daftar menu yang difilter berdasarkan peran pengguna
     const menuItems = allMenuItems.filter(item => item.roles.includes(userData.role));
 
-    // Logika Fetch Books
+    // --- Pembaruan Logika Pengambilan Data dan Peran ---
     const fetchBooks = useCallback(async () => {
         setIsLoading(true);
         setIsError(null);
 
         try {
-            const response = await fetch(BOOKS_API_URL, {
-                method: 'GET',
+            const token = localStorage.getItem('userToken');
+            let currentName = 'Tamu';
+            let currentRole = 'guest';
+
+            // Logika Otentikasi & Peran Fleksibel
+            if (token === 'valid_admin_token') {
+                currentName = 'Admin Perpustakaan';
+                currentRole = 'admin';
+                setIsError("Simulasi Admin: Token ditemukan. Data buku adalah data tiruan.");
+            } else if (token === 'valid_member_token') { // Token generik untuk member
+                currentName = 'Anggota Perpustakaan'; 
+                currentRole = 'member';
+                setIsError("Simulasi Anggota: Token ditemukan. Data buku adalah data tiruan.");
+            } else {
+                // Jika tidak ada token atau token invalid
+                currentName = 'Tamu';
+                currentRole = 'guest';
+                // Kita tidak tahu apakah yang login Ahmad atau Budi, jadi kita set ke default role (guest)
+                setIsError("Token tidak ditemukan. Data buku adalah data tiruan."); 
+            }
+
+            setUserData({ name: currentName, role: currentRole });
+            
+            // Panggilan API (Simulasi)
+            const response = await axios.get(BOOKS_API_URL, {
                 headers: {
-                    'Content-Type': 'application/json',
-                    // Mengirim token ke route yang terproteksi oleh 'auth:sanctum'
-                    ...(userToken && { 'Authorization': `Bearer ${userToken}` }) 
+                    Authorization: `Bearer ${token}` 
                 }
             });
 
-            if (!response.ok) {
-                // Jika server merespons 401 Unauthorized, anggap token kedaluwarsa
-                if (response.status === 401) {
-                    throw new Error("Token kedaluwarsa atau tidak valid. Silakan login kembali.");
-                }
-                const errorData = await response.json().catch(() => ({ message: 'Kesalahan jaringan.' }));
-                throw new Error(`Gagal mengambil data: ${response.status} ${errorData.message || response.statusText}`);
-            }
-
-            const apiData = await response.json();
-
-            // PENTING: Sesuaikan pemetaan data ini dengan output API Laravel Anda
-            if (apiData.status || (apiData.data && Array.isArray(apiData.data))) {
-                const processedBooks = apiData.data.map((book, index) => ({
+            if (response.data.status) {
+                // MENGGUNAKAN SEMUA DATA API YANG MASUK (TIDAK PEDULI JUMLAHNYA)
+                const processedBooks = response.data.data.map((book, index) => ({
                     id: book.id,
-                    title: book.author, // Menggunakan author sebagai title cover
-                    subtitle: book.title, // Menggunakan title sebagai subtitle cover
+                    // Membalik posisi author dan title untuk tampilan cover
+                    title: book.author, 
+                    subtitle: book.title, 
+                    // Gunakan ID buku, bukan index, untuk gaya cover yang lebih konsisten 
                     cover: getBookCoverStyle(book.id), 
                     category: categoryMap[book.category_id] || 'nonfiction', 
-                    // Simulasi featured, ganti dengan data API nyata jika tersedia
                     featured: index < 3, 
                     stock: book.stock
                 }));
 
                 setBooks(processedBooks);
             } else {
-                throw new Error(apiData.message || "Struktur respons API tidak valid.");
+                setIsError("Gagal mengambil data buku dari API.");
+            }
+
+            // Pengecekan ulang menu aktif (jika peran berubah)
+            const availableMenus = allMenuItems.filter(item => item.roles.includes(currentRole));
+            if (!availableMenus.some(item => item.id === activeMenu)) {
+                setActiveMenu('home');
             }
 
         } catch (error) {
             console.error("Error fetching books:", error);
-            setIsError(`Terjadi kesalahan saat memuat data buku: ${error.message}.`);
-            setBooks([]);
+            setIsError("Terjadi kesalahan saat memuat data. Periksa konsol.");
         } finally {
             setIsLoading(false);
         }
-    }, [userToken, setIsError]); 
+    }, [activeMenu]); 
 
-    // Panggil fetchBooks saat userToken berubah (login berhasil)
+    // Panggil fetchBooks saat komponen dimuat
     useEffect(() => {
-        if (userToken) {
-            fetchBooks();
-        }
-        // Jika token null (guest), kita tetap bisa memuat buku jika API /books tidak terproteksi
-        // Tapi di sini kita asumsikan /books terproteksi atau menampilkan data terbatas untuk guest
-        // Kita hanya fetch jika ada token agar menghindari error 401 berulang
-        if (!userToken) {
-            setIsLoading(false);
-            setBooks([]);
+        // PERBAIKAN: Set token default member JIKA TIDAK ADA token sama sekali.
+        // Jika token sudah ada (walaupun 'valid_member_token'), fetchBooks akan berjalan
+        if (!localStorage.getItem('userToken')) {
+             localStorage.setItem('userToken', 'valid_member_token'); 
         }
 
-    }, [userToken, fetchBooks]);
+        fetchBooks();
+    }, [fetchBooks]);
+
+    // --- Logout Functionality (Simulasi) ---
+    const handleLogout = () => {
+        localStorage.removeItem('userToken');
+        // Set token ke null untuk simulasi 'Tamu'
+        setUserData({ name: 'Tamu', role: 'guest' });
+        setActiveMenu('home');
+        setBooks([]);
+        setIsError("Anda telah logout. Data buku dikosongkan.");
+        // Panggil fetchBooks lagi untuk mengambil data sebagai Guest/Tamu
+        fetchBooks(); 
+    };
 
     const filteredBooks = selectedCategory === 'all'
         ? books
@@ -140,7 +203,6 @@ const DashboardContent = ({ userData, userToken, handleLogout, isError, setIsErr
 
     // Helper untuk rendering konten berdasarkan menu yang aktif
     const renderContent = () => {
-
         // --- Loading State ---
         if (isLoading) {
             return (
@@ -151,55 +213,54 @@ const DashboardContent = ({ userData, userToken, handleLogout, isError, setIsErr
             );
         }
 
-        // --- Tampilan Daftar Buku ---
+        // --- Tampilan Daftar Buku (sesuai screenshot) ---
         if (activeMenu === 'books') {
             return (
                 <>
                     {/* Pesan Error/Peringatan Diletakkan di sini */}
                     {isError && (
-                        <div className="p-4 mb-6 bg-red-100 border border-red-300 text-red-800 rounded-xl font-medium">
-                            <p>⚠️ Kesalahan API: {isError}</p>
-                            <p className="text-sm">Pastikan **`API_BASE_URL`** Anda sudah benar, API sudah berjalan, dan token Anda valid.</p>
+                        <div className="p-4 mb-6 bg-yellow-100 border border-yellow-300 text-yellow-800 rounded-xl font-medium">
+                            <p>⚠️ Peringatan: {isError}</p>
+                            <p className="text-sm">Ini adalah simulasi, nama pengguna diset berdasarkan token di `localStorage` (`valid_member_token` atau `valid_admin_token`).</p>
                         </div>
                     )}
 
                     <div className="bg-white rounded-3xl shadow-xl p-6 lg:p-8">
                         <h2 className="text-2xl lg:text-3xl font-bold mb-6" style={{ color: '#442D1C' }}>Semua Buku ({filteredBooks.length})</h2>
                         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 lg:gap-6">
-                            {filteredBooks.length > 0 ? (
-                                filteredBooks.map(book => (
-                                    <div key={book.id} className="group cursor-pointer">
-                                        <div 
-                                            className="rounded-xl shadow-md aspect-[3/4] p-3 lg:p-4 flex flex-col justify-end transform group-hover:scale-105 group-hover:shadow-xl transition-all duration-300"
-                                            style={{ background: book.cover }}
-                                        >
-                                            <div className="text-white">
-                                                <p className="text-xs opacity-90 mb-1">{book.title}</p>
-                                                <h4 className="text-sm font-bold">{book.subtitle}</h4>
-                                                <p className="text-xs opacity-70 mt-1">Stok: {book.stock}</p>
-                                            </div>
+                            {filteredBooks.map(book => (
+                                <div key={book.id} className="group cursor-pointer">
+                                    <div 
+                                        className="rounded-xl shadow-md aspect-[3/4] p-3 lg:p-4 flex flex-col justify-end transform group-hover:scale-105 group-hover:shadow-xl transition-all duration-300"
+                                        style={{ background: book.cover }}
+                                    >
+                                        <div className="text-white">
+                                            <p className="text-xs opacity-90 mb-1">{book.title}</p>
+                                            <h4 className="text-sm font-bold">{book.subtitle}</h4>
+                                            <p className="text-xs opacity-70 mt-1">Stok: {book.stock}</p>
                                         </div>
                                     </div>
-                                ))
-                            ) : (
-                                <p className="text-gray-500 col-span-full">Tidak ada buku yang ditemukan. Coba ganti kategori atau periksa koneksi API Anda.</p>
-                            )}
+                                </div>
+                            ))}
                         </div>
                     </div>
                 </>
             );
         }
         
-        if (activeMenu === 'home') {
+        // ... (Render home dan borrowing tetap sama, hanya tampilan books yang disesuaikan untuk mengatasi peringatan) ...
+
+         if (activeMenu === 'home') {
             const featuredBooks = filteredBooks.filter(b => b.featured).slice(0, 4); 
             const interestingBooks = filteredBooks.filter(b => !b.featured);
 
             return (
                 <>
+                    {/* Pesan Error/Peringatan */}
                     {isError && (
-                         <div className="p-4 mb-6 bg-red-100 border border-red-300 text-red-800 rounded-xl font-medium">
-                            <p>⚠️ Kesalahan API: {isError}</p>
-                            <p className="text-sm">Pastikan **`API_BASE_URL`** Anda sudah benar, API sudah berjalan, dan token Anda valid.</p>
+                        <div className="p-4 mb-6 bg-yellow-100 border border-yellow-300 text-yellow-800 rounded-xl font-medium">
+                            <p>⚠️ Peringatan: {isError}</p>
+                            <p className="text-sm">Ini adalah simulasi, nama pengguna diset berdasarkan token di `localStorage` (`valid_member_token` atau `valid_admin_token`).</p>
                         </div>
                     )}
 
@@ -224,17 +285,17 @@ const DashboardContent = ({ userData, userToken, handleLogout, isError, setIsErr
                         </div>
                     </div>
 
-                    {/* Hero Section */}
+                    {/* Hero Section - Konten dinamis berdasarkan peran */}
                     <div className="bg-white rounded-3xl shadow-xl p-6 lg:p-8 mb-8 relative overflow-hidden">
                         <div className="absolute top-0 right-0 w-64 h-64 rounded-full blur-3xl opacity-30" style={{ background: 'linear-gradient(135deg, #fde68a, #fed7aa)' }}></div>
                         <div className="relative z-10">
                             <h2 className="text-3xl lg:text-5xl font-bold mb-4 leading-tight" style={{ color: '#442D1C' }}>
-                                {userData.role === 'guest' ? 'SILAKAN LOGIN' : 'POPULAR'}
+                                {userData.role === 'guest' ? 'SELAMAT DATANG!' : 'POPULAR'}
                                 <br />
-                                {userData.role === 'guest' ? 'Akses Penuh' : 'BESTSELLERS'}
+                                {userData.role === 'guest' ? 'Akses Terbatas' : 'BESTSELLERS'}
                             </h2>
                             <p className="text-gray-600 mb-6 max-w-md">
-                                {userData.role === 'guest' ? 'Anda masuk sebagai Tamu. Login untuk melihat fitur peminjaman.' : `Selamat datang kembali, ${userData.name}! Berikut buku terbaik yang direkomendasikan untuk Anda.`}
+                                {userData.role === 'guest' ? 'Silakan login untuk melihat riwayat peminjaman.' : `Selamat datang kembali, ${userData.name}! Kami memilih buku-buku terbaik yang direkomendasikan untuk Anda.`}
                             </p>
                             <button 
                                 onClick={() => setActiveMenu('books')}
@@ -300,7 +361,7 @@ const DashboardContent = ({ userData, userToken, handleLogout, isError, setIsErr
                  );
             }
             
-            // Data riwayat peminjaman mock (Harusnya di-fetch dari /api/borrowing)
+            // Data riwayat peminjaman mock
             const mockBorrowings = [
                 { id: 1, title: 'Atomic Habits', borrowDate: '01 Okt 2025', returnDate: '08 Okt 2025', status: 'Dipinjam', statusClass: 'bg-green-100 text-green-700' },
                 { id: 2, title: 'The Subtle Art of Not Giving a F*ck', borrowDate: '25 Sep 2025', returnDate: '02 Okt 2025', status: 'Dikembalikan', statusClass: 'bg-blue-100 text-blue-700' },
@@ -311,8 +372,6 @@ const DashboardContent = ({ userData, userToken, handleLogout, isError, setIsErr
                 <div className="bg-white rounded-3xl shadow-xl p-6 lg:p-8">
                     <h2 className="text-2xl lg:text-3xl font-bold mb-6" style={{ color: '#442D1C' }}>Riwayat Peminjaman {userData.name}</h2>
                     <div className="overflow-x-auto">
-                        {/* PENTING: Untuk data nyata, Anda perlu fetch dari /api/borrowing dengan token */}
-                        <p className="mb-4 text-sm text-gray-600">⚠️ Catatan: Data di bawah ini masih *mock* dan harus dihubungkan ke endpoint **`/api/borrowing`** Anda.</p>
                         <table className="w-full">
                             <thead>
                                 <tr style={{ borderBottom: '2px solid #E8D1A7' }}>
@@ -344,9 +403,9 @@ const DashboardContent = ({ userData, userToken, handleLogout, isError, setIsErr
             );
         }
 
+        // Fallback
         return null;
     };
-
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-orange-50 via-amber-50 to-orange-100 font-sans">
@@ -375,6 +434,7 @@ const DashboardContent = ({ userData, userToken, handleLogout, isError, setIsErr
                         </div>
 
                         <nav className="space-y-2">
+                            {/* Menu item difilter berdasarkan peran pengguna */}
                             {menuItems.map(item => (
                                 <button
                                     key={item.id}
@@ -462,253 +522,6 @@ const DashboardContent = ({ userData, userToken, handleLogout, isError, setIsErr
                 </main>
             </div>
         </div>
-    );
-};
-
-// ===============================================
-// LOGIN SCREEN COMPONENT
-// ===============================================
-
-const LoginScreen = ({ handleLogin }) => {
-    const [username, setUsername] = useState('');
-    const [password, setPassword] = useState('');
-    const [loginAs, setLoginAs] = useState('member'); // default
-
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        // Memanggil fungsi login dari App, meneruskan peran yang dipilih
-        handleLogin(loginAs, username, password); 
-    };
-
-    return (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-amber-50 to-orange-100 p-4 font-sans">
-            <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl p-8 lg:p-10 transform hover:scale-[1.01] transition-transform duration-300">
-                <div className="flex items-center gap-3 justify-center mb-6">
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #E8D1A7, #442D1C)' }}>
-                        <Book className="w-6 h-6 text-white" />
-                    </div>
-                    <h1 className="text-3xl font-bold" style={{ color: '#442D1C' }}>Perpustakaan Online</h1>
-                </div>
-                <p className="text-center text-gray-500 mb-8">Masuk untuk mendapatkan akses penuh ke koleksi buku.</p>
-
-                <form onSubmit={handleSubmit} className="space-y-6">
-                    {/* Input Username */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
-                        <input
-                            type="text"
-                            value={username}
-                            onChange={(e) => setUsername(e.target.value)}
-                            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-amber-500 focus:border-amber-500 transition-all outline-none"
-                            placeholder="username@email.com"
-                            required
-                        />
-                    </div>
-                    
-                    {/* Input Password */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-                        <input
-                            type="password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-amber-500 focus:border-amber-500 transition-all outline-none"
-                            placeholder="&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;"
-                            required
-                        />
-                    </div>
-
-                    {/* Role Selector (Simulasi untuk membedakan dashboard) */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Login Sebagai (Simulasi)</label>
-                        <div className="flex gap-4">
-                            <label className="flex items-center gap-2 p-3 bg-orange-50 rounded-xl cursor-pointer">
-                                <input
-                                    type="radio"
-                                    name="loginAs"
-                                    value="member"
-                                    checked={loginAs === 'member'}
-                                    onChange={() => setLoginAs('member')}
-                                    className="text-amber-500 focus:ring-amber-500"
-                                />
-                                <span className="font-medium text-gray-700">Anggota (Member)</span>
-                            </label>
-                            <label className="flex items-center gap-2 p-3 bg-orange-50 rounded-xl cursor-pointer">
-                                <input
-                                    type="radio"
-                                    name="loginAs"
-                                    value="admin"
-                                    checked={loginAs === 'admin'}
-                                    onChange={() => setLoginAs('admin')}
-                                    className="text-amber-500 focus:ring-amber-500"
-                                />
-                                <span className="font-medium text-gray-700">Admin</span>
-                            </label>
-                        </div>
-                    </div>
-
-                    {/* Submit Button */}
-                    <button
-                        type="submit"
-                        className="w-full flex items-center justify-center gap-2 px-8 py-3 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-300" 
-                        style={{ background: 'linear-gradient(90deg, #E8D1A7, #442D1C)' }}
-                    >
-                        Masuk ke Dashboard <ArrowRight className="w-4 h-4" />
-                    </button>
-                </form>
-
-                <p className="text-center text-sm text-gray-500 mt-6">
-                    Belum punya akun? 
-                    <a href="#" className="font-semibold text-amber-600 hover:text-amber-700 ml-1">Daftar di sini</a> 
-                    (endpoint: `/api/register`)
-                </p>
-            </div>
-        </div>
-    );
-};
-
-
-// ===============================================
-// MAIN APPLICATION WRAPPER (Dashboard)
-// ===============================================
-
-const Dashboard = () => {
-    // State Otentikasi
-    const [userToken, setUserToken] = useState(localStorage.getItem('userToken') || null);
-    const [userData, setUserData] = useState({ name: 'Tamu', role: 'guest' }); 
-    const [isAuthReady, setIsAuthReady] = useState(false);
-    const [isError, setIsError] = useState(null);
-
-    // Fungsi untuk mendapatkan detail user (di dunia nyata: hit /api/user)
-    const getUserDetailsFromToken = useCallback((token) => {
-        // Simulasi: Menguraikan peran dari token string (di dunia nyata: ambil dari respons login)
-        if (token === 'mock_admin_token') {
-            return { name: 'Admin Perpustakaan', role: 'admin' };
-        }
-        if (token === 'mock_member_token') {
-            return { name: 'Anggota Perpustakaan', role: 'member' };
-        }
-        return { name: 'Tamu', role: 'guest' };
-    }, []);
-
-    // Effect saat dimuat: Cek token dan set userData
-    useEffect(() => {
-        if (userToken) {
-            setUserData(getUserDetailsFromToken(userToken));
-        } else {
-             setUserData({ name: 'Tamu', role: 'guest' });
-        }
-        setIsAuthReady(true);
-    }, [userToken, getUserDetailsFromToken]);
-
-
-    // Handler Simulasi Login
-    const handleLogin = (role, username, password) => {
-        let token;
-        let details;
-
-        // *** PENTING: GANTI LOGIKA INI DENGAN PANGGILAN FETCH API KE /api/login ***
-        // Logika saat ini hanya simulasi untuk menguji tampilan dashboard
-        
-        // Contoh struktur fetch nyata:
-        /*
-        try {
-            const response = await fetch(`${API_BASE_URL}/login`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: username, password })
-            });
-            const result = await response.json();
-            if (response.ok && result.token) {
-                token = result.token;
-                // Asumsi API mengembalikan role dan name user setelah login
-                details = { name: result.user.name, role: result.user.role }; 
-            } else {
-                throw new Error(result.message || 'Login gagal.');
-            }
-        } catch (error) {
-            setIsError(`Login gagal: ${error.message}`);
-            return;
-        }
-        */
-
-        if (role === 'admin') {
-            token = 'mock_admin_token';
-            details = { name: 'Admin Perpustakaan', role: 'admin' };
-        } else {
-            // Member
-            token = 'mock_member_token';
-            details = { name: 'Anggota Perpustakaan', role: 'member' };
-        }
-
-        // 1. Simpan token yang didapat dari respons API
-        localStorage.setItem('userToken', token);
-        setUserToken(token);
-        
-        // 2. Set user details
-        setUserData(details); 
-        setIsError(null);
-    };
-
-    // Handler Logout
-    const handleLogout = async () => {
-        setIsError(null);
-        try {
-            // Panggilan API ke /api/logout
-            if (userToken) {
-                const response = await fetch(`${API_BASE_URL}/logout`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${userToken}`,
-                        'Content-Type': 'application/json'
-                    }
-                });
-                
-                if (!response.ok) {
-                    // Log error tapi tetap paksa logout di sisi klien
-                    console.error("API Logout gagal:", await response.text());
-                }
-            }
-            
-            // 1. Hapus token
-            localStorage.removeItem('userToken');
-            setUserToken(null);
-            
-            // 2. Reset state
-            setUserData({ name: 'Tamu', role: 'guest' });
-            
-        } catch (error) {
-            console.error("Logout failed:", error);
-            // Tetap logout di sisi klien meskipun ada error jaringan
-            localStorage.removeItem('userToken');
-            setUserToken(null);
-            setUserData({ name: 'Tamu', role: 'guest' });
-            setIsError("Logout berhasil di sisi klien, namun terjadi error di API server.");
-        }
-    };
-
-    if (!isAuthReady) {
-        return (
-            <div className="min-h-screen flex items-center justify-center">
-                <div className="animate-spin w-10 h-10 border-4 border-t-4 border-amber-500 rounded-full"></div>
-            </div>
-        );
-    }
-    
-    // Tampilkan Login Screen jika tidak ada token
-    if (!userToken) {
-        return <LoginScreen handleLogin={handleLogin} />;
-    }
-
-    // Tampilkan Dashboard jika ada token (sudah login)
-    return (
-        <DashboardContent 
-            userData={userData} 
-            userToken={userToken}
-            handleLogout={handleLogout}
-            isError={isError}
-            setIsError={setIsError}
-        />
     );
 };
 
