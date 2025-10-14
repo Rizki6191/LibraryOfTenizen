@@ -1,18 +1,94 @@
-// ============================================
-// 3. Register.jsx (Updated)
-// ============================================
 import React, { useState } from "react";
 import "../styles/auth.css";
-import { Link } from "react-router-dom";
-import { RegisterHelmet } from "../components/SEOHelmet"; // Import helmet
+import { Link, useNavigate } from "react-router-dom"; // Import useNavigate for redirection
+import { RegisterHelmet } from "../components/SEOHelmet"; 
 
 export default function Register() {
+    const navigate = useNavigate(); // Hook for navigation
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+    
+    // 1. State for form data, including all required API fields
+    const [formData, setFormData] = useState({
+        name: "",
+        nis: "",
+        major: "",
+        grade: "",
+        email: "",
+        password: "",
+        confirmPassword: "", // Added for client-side validation, but not sent to API
+        role: "member", // Default role as per API payload
+    });
+
+    // State for handling loading/submission status and errors
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
+
+    // 2. Handle change for all form inputs
+    const handleChange = (e) => {
+        const { name, value } = e.target;
+        setFormData((prev) => ({
+            ...prev,
+            [name]: value,
+        }));
+    };
+
+    // 3. Handle form submission
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setError(null);
+
+        // Basic client-side validation
+        if (formData.password !== formData.confirmPassword) {
+            setError("Kata Sandi dan Konfirmasi Kata Sandi tidak cocok.");
+            return;
+        }
+
+        // Prepare data for API, excluding confirmPassword
+        const apiPayload = {
+            name: formData.name,
+            nis: formData.nis,
+            major: formData.major,
+            grade: formData.grade,
+            email: formData.email,
+            password: formData.password,
+            role: formData.role, 
+        };
+
+        setLoading(true);
+
+        try {
+            const response = await fetch("http://127.0.0.1:8000/api/register", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(apiPayload),
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                // Registration successful
+                alert("Pendaftaran Berhasil! Silakan masuk.");
+                navigate("/login"); // Redirect to login page
+            } else {
+                // Registration failed (e.g., NIS or email already exists)
+                const errorMessage = result.message || "Pendaftaran gagal. Silakan coba lagi.";
+                setError(errorMessage);
+            }
+        } catch (err) {
+            // Network or other unexpected error
+            setError("Terjadi kesalahan jaringan atau server.");
+            console.error("Registration error:", err);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     return (
         <>
-            <RegisterHelmet /> {/* Tambahkan helmet */}
+            <RegisterHelmet />
             <div className="login-page">
                 {/* Wave gradient */}
                 <div className="wave" aria-hidden="true"></div>
@@ -26,15 +102,26 @@ export default function Register() {
                                 <div className="card login-card">
                                     <div className="text-center mb-4">
                                         <h4 className="fw-bold">Daftar Akun</h4>
-                                        <p className="subtitle">atau Masuk ke Akun</p>
                                     </div>
 
-                                    <form>
+                                    {/* Attach handleSubmit to the form's onSubmit */}
+                                    <form onSubmit={handleSubmit}>
+                                        
+                                        {/* Display error message if any */}
+                                        {error && (
+                                            <div className="alert alert-danger" role="alert">
+                                                {error}
+                                            </div>
+                                        )}
+
                                         <div className="mb-3">
                                             <input 
                                                 type="text" 
                                                 className="form-control" 
                                                 placeholder="Nama Lengkap" 
+                                                name="name" // Added name attribute
+                                                value={formData.name} // Added value attribute
+                                                onChange={handleChange} // Added onChange handler
                                                 required 
                                             />
                                         </div>
@@ -44,7 +131,10 @@ export default function Register() {
                                                 type="text" 
                                                 className="form-control" 
                                                 placeholder="NIS" 
-                                                maxLength="5"
+                                                name="nis" // Added name attribute
+                                                value={formData.nis} // Added value attribute
+                                                onChange={handleChange} // Added onChange handler
+                                                maxLength="7" // Changed to 7 to match example data (2020101 is 7 digits)
                                                 pattern="\d*"
                                                 inputMode="numeric"
                                                 required 
@@ -53,7 +143,13 @@ export default function Register() {
 
                                         <div className="row g-2 mb-3">
                                             <div className="col-6">
-                                                <select className="form-select" required>
+                                                <select 
+                                                    className="form-select" 
+                                                    name="grade" // Added name attribute
+                                                    value={formData.grade} // Added value attribute
+                                                    onChange={handleChange} // Added onChange handler
+                                                    required
+                                                >
                                                     <option value="">Pilih Kelas</option>
                                                     <option value="10">10</option>
                                                     <option value="11">11</option>
@@ -61,13 +157,22 @@ export default function Register() {
                                                 </select>
                                             </div>
                                             <div className="col-6">
-                                                <select className="form-select" required>
+                                                <select 
+                                                    className="form-select" 
+                                                    name="major" // Added name attribute
+                                                    value={formData.major} // Added value attribute
+                                                    onChange={handleChange} // Added onChange handler
+                                                    required
+                                                >
                                                     <option value="">Pilih Jurusan</option>
-                                                    <option value="TKJ">RPL</option>
-                                                    <option value="RPL">BR</option>
-                                                    <option value="MM">BD</option>
-                                                    <option value="TKRO">ML</option>
-                                                    <option value="TBSM">AKL</option>
+                                                    <option value="RPL">RPL</option>
+                                                    <option value="BR">BR</option>
+                                                    <option value="BD">BD</option>
+                                                    <option value="AKL1">AKL1</option>
+                                                    <option value="AKL2">AKL2</option>
+                                                    <option value="ML">ML</option>
+                                                    <option value="MP">MP</option>
+                                                    {/* NOTE: You should map the options to their correct values (e.g., BR, BD, ML, AKL in your list should likely be RPL, TKJ, MM, TKRO, TBSM if they are the majors). I've corrected them to the API payload's key names. */}
                                                 </select>
                                             </div>
                                         </div>
@@ -77,6 +182,9 @@ export default function Register() {
                                                 type="email" 
                                                 className="form-control" 
                                                 placeholder="Email" 
+                                                name="email" // Added name attribute
+                                                value={formData.email} // Added value attribute
+                                                onChange={handleChange} // Added onChange handler
                                                 required 
                                             />
                                         </div>
@@ -86,6 +194,9 @@ export default function Register() {
                                                 type={showPassword ? "text" : "password"}
                                                 className="form-control"
                                                 placeholder="Kata Sandi"
+                                                name="password" // Added name attribute
+                                                value={formData.password} // Added value attribute
+                                                onChange={handleChange} // Added onChange handler
                                                 required
                                             />
                                             <button
@@ -103,6 +214,9 @@ export default function Register() {
                                                 type={showConfirmPassword ? "text" : "password"}
                                                 className="form-control"
                                                 placeholder="Konfirmasi Kata Sandi"
+                                                name="confirmPassword" // Added name attribute for this field
+                                                value={formData.confirmPassword} // Added value attribute
+                                                onChange={handleChange} // Added onChange handler
                                                 required
                                             />
                                             <button
@@ -115,7 +229,13 @@ export default function Register() {
                                             </button>
                                         </div>
 
-                                        <button type="submit" className="btn btn-primary mb-3">Daftar</button>
+                                        <button 
+                                            type="submit" 
+                                            className="btn btn-primary mb-3"
+                                            disabled={loading} // Disable button while loading
+                                        >
+                                            {loading ? 'Mendaftar...' : 'Daftar'}
+                                        </button>
 
                                         <div className="text-center">
                                             <p className="small mb-0">
