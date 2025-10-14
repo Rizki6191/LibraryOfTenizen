@@ -1,53 +1,16 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import axios from 'axios'; // ⚠️ PERBAIKAN: Import axios asli
 import { Home, Book, List, LogOut, Menu, X, Search, BookOpen, GraduationCap, Heart, TrendingUp, Users } from 'lucide-react';
 import "../styles/dashboard.css"; 
 
 // ===============================================
 // API Configuration & Data Setup
-// (Bagian ini tidak berubah, MOCK API tetap sama)
 // ===============================================
 
 const API_BASE_URL = "http://127.0.0.1:8000/api";
-const BOOKS_API_URL = `${API_BASE_URL}/books`;
+const BOOKS_API_URL = `${API_BASE_URL}/books`; // ⚠️ API nyata yang akan diakses
 
-// --- DATA MOCK API SESUAI INPUT ANDA ---
-const MOCK_API_DATA = {
-    status: true,
-    message: "Ini adalah data semua buku!",
-    data: [
-        { id: 3, title: "Belajar Laravel Dengan Almer", author: "Almer Riwanto", description: "Seorang anak muda yang sangat ingin menjadi programer dan akhirnya membuat sebuah course", cover_image: "books/almer.jpg", category_id: 3, stock: 12 },
-        { id: 4, title: "Atomic Habits", author: "James Clear", description: "Buku self-help tentang membangun kebiasaan positif.", cover_image: "books/atomic_habits.jpg", category_id: 2, stock: 11 },
-        { id: 5, title: "The Subtle Art of Not Giving a F*ck", author: "Mark Manson", description: "Buku self-help dengan pendekatan realistis.", cover_image: "books/subtle_art.jpg", category_id: 2, stock: 9 },
-        { id: 6, title: "Spare", author: "Prince Harry", description: "Autobiografi Prince Harry tentang hidup dan keluarganya.", cover_image: "books/spare.jpg", category_id: 3, stock: 10 },
-        { id: 7, title: "Becoming", author: "Michelle Obama", description: "Memoar mantan ibu negara Amerika Serikat.", cover_image: "books/becoming.jpg", category_id: 3, stock: 7 },
-        { id: 8, title: "The Midnight Library", author: "Matt Haig", description: "Novel tentang pilihan hidup dan kehidupan alternatif.", cover_image: "books/midnight_library.jpg", category_id: 4, stock: 7 },
-        { id: 9, title: "Harry Potter and the Sorcerer's Stone", author: "J.K. Rowling", description: "Buku fantasi klasik tentang dunia sihir.", cover_image: "books/harry_potter_1.jpg", category_id: 4, stock: 14 },
-        { id: 10, title: "Dune", author: "Frank Herbert", description: "Novel science fiction klasik di planet gurun Arrakis.", cover_image: "books/dune.jpg", category_id: 5, stock: 6 },
-        { id: 11, title: "Project Hail Mary", author: "Andy Weir", description: "Science fiction dengan misi penyelamatan umat manusia.", cover_image: "books/project_hail_mary.jpg", category_id: 5, stock: 8 },
-        { id: 12, title: "The Guest List", author: "Lucy Foley", description: "Novel misteri pembunuhan di pesta pernikahan.", cover_image: "books/the_guest_list.jpg", category_id: 6, stock: 5 },
-        { id: 13, title: "Verity", author: "Colleen Hoover", description: "Thriller psikologis penuh misteri.", cover_image: "books/verity.jpg", category_id: 7, stock: 7 },
-        { id: 14, title: "The Haunting of Hill House", author: "Shirley Jackson", description: "Novel horor klasik tentang rumah berhantu.", cover_image: "books/hill_house.jpg", category_id: 8, stock: 4 },
-        { id: 15, title: "Sapiens: A Brief History of Humankind", author: "Yuval Noah Harari", description: "Sejarah umat manusia dari zaman purba hingga modern.", cover_image: "books/sapiens.jpg", category_id: 9, stock: 10 },
-        // Data ke-16, dst. akan di sini
-    ],
-};
-
-// SIMULASI AXIOS 
-const axios = {
-    get: (url) => {
-        return new Promise((resolve) => {
-            setTimeout(() => {
-                if (url === BOOKS_API_URL) {
-                    resolve({ data: MOCK_API_DATA });
-                } else {
-                    resolve({ data: { status: false, message: "URL tidak ditemukan", data: [] } });
-                }
-            }, 500); // Waktu loading dikurangi agar lebih cepat
-        });
-    }
-};
-
-// ... (categoryMap, categories, allMenuItems, COVER_STYLES, getBookCoverStyle tetap sama) ...
+// --- Data Tambahan (Tetap) ---
 const categoryMap = {
     2: 'psychology',
     3: 'nonfiction',
@@ -88,7 +51,6 @@ const getBookCoverStyle = (id) => {
     return COVER_STYLES[id % COVER_STYLES.length];
 };
 
-
 const Dashboard = () => {
     // State untuk UI/Navigasi
     const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -105,7 +67,7 @@ const Dashboard = () => {
     // Daftar menu yang difilter berdasarkan peran pengguna
     const menuItems = allMenuItems.filter(item => item.roles.includes(userData.role));
 
-    // --- Pembaruan Logika Pengambilan Data dan Peran ---
+    // --- Logika Pengambilan Data Buku Asli ---
     const fetchBooks = useCallback(async () => {
         setIsLoading(true);
         setIsError(null);
@@ -115,49 +77,51 @@ const Dashboard = () => {
             let currentName = 'Tamu';
             let currentRole = 'guest';
 
-            // Logika Otentikasi & Peran Fleksibel
+            // Logika Otentikasi & Peran Fleksibel (Simulasi Peran Berdasarkan Token)
             if (token === 'valid_admin_token') {
                 currentName = 'Admin Perpustakaan';
                 currentRole = 'admin';
-                setIsError("Simulasi Admin: Token ditemukan. Data buku adalah data tiruan.");
-            } else if (token === 'valid_member_token') { // Token generik untuk member
+                // ⚠️ PESAN PERINGATAN DISESUAIKAN: Data diambil dari API asli.
+                setIsError("Simulasi Admin: Token ditemukan. Data diambil dari API books.");
+            } else if (token === 'valid_member_token') { 
                 currentName = 'Anggota Perpustakaan'; 
                 currentRole = 'member';
-                setIsError("Simulasi Anggota: Token ditemukan. Data buku adalah data tiruan.");
+                // ⚠️ PESAN PERINGATAN DISESUAIKAN: Data diambil dari API asli.
+                setIsError("Simulasi Anggota: Token ditemukan. Data diambil dari API books.");
             } else {
-                // Jika tidak ada token atau token invalid
                 currentName = 'Tamu';
                 currentRole = 'guest';
-                // Kita tidak tahu apakah yang login Ahmad atau Budi, jadi kita set ke default role (guest)
-                setIsError("Token tidak ditemukan. Data buku adalah data tiruan."); 
+                setIsError("Token tidak ditemukan. Anda berhak melihat data buku."); 
             }
 
             setUserData({ name: currentName, role: currentRole });
             
-            // Panggilan API (Simulasi)
+            // Panggilan API ke API nyata (http://127.0.0.1:8000/api/books)
             const response = await axios.get(BOOKS_API_URL, {
                 headers: {
                     Authorization: `Bearer ${token}` 
                 }
             });
 
-            if (response.data.status) {
-                // MENGGUNAKAN SEMUA DATA API YANG MASUK (TIDAK PEDULI JUMLAHNYA)
-                const processedBooks = response.data.data.map((book, index) => ({
+            // Asumsi API mengembalikan format { status: true, data: [...] }
+            if (response.data && response.data.data) { 
+                const apiBooks = response.data.data;
+                
+                const processedBooks = apiBooks.map((book, index) => ({
                     id: book.id,
-                    // Membalik posisi author dan title untuk tampilan cover
+                    // Membalik posisi author dan title untuk tampilan cover agar judul lebih besar
                     title: book.author, 
                     subtitle: book.title, 
                     // Gunakan ID buku, bukan index, untuk gaya cover yang lebih konsisten 
                     cover: getBookCoverStyle(book.id), 
                     category: categoryMap[book.category_id] || 'nonfiction', 
-                    featured: index < 3, 
+                    featured: index < 3, // 3 buku pertama dianggap unggulan
                     stock: book.stock
                 }));
 
                 setBooks(processedBooks);
             } else {
-                setIsError("Gagal mengambil data buku dari API.");
+                setIsError("Gagal mengambil data buku dari API. Format data tidak sesuai atau status false.");
             }
 
             // Pengecekan ulang menu aktif (jika peran berubah)
@@ -168,7 +132,9 @@ const Dashboard = () => {
 
         } catch (error) {
             console.error("Error fetching books:", error);
-            setIsError("Terjadi kesalahan saat memuat data. Periksa konsol.");
+            // ⚠️ PESAN ERROR DISESUAIKAN untuk koneksi API
+            setIsError(`Terjadi kesalahan saat memuat data: ${error.message}. Pastikan API server berjalan di ${API_BASE_URL}.`);
+            setBooks([]); // Kosongkan buku jika gagal
         } finally {
             setIsLoading(false);
         }
@@ -177,7 +143,6 @@ const Dashboard = () => {
     // Panggil fetchBooks saat komponen dimuat
     useEffect(() => {
         // PERBAIKAN: Set token default member JIKA TIDAK ADA token sama sekali.
-        // Jika token sudah ada (walaupun 'valid_member_token'), fetchBooks akan berjalan
         if (!localStorage.getItem('userToken')) {
              localStorage.setItem('userToken', 'valid_member_token'); 
         }
@@ -192,7 +157,7 @@ const Dashboard = () => {
         setUserData({ name: 'Tamu', role: 'guest' });
         setActiveMenu('home');
         setBooks([]);
-        setIsError("Anda telah logout. Data buku dikosongkan.");
+        setIsError("Anda telah logout. Mencoba mengambil data sebagai Tamu...");
         // Panggil fetchBooks lagi untuk mengambil data sebagai Guest/Tamu
         fetchBooks(); 
     };
@@ -213,7 +178,7 @@ const Dashboard = () => {
             );
         }
 
-        // --- Tampilan Daftar Buku (sesuai screenshot) ---
+        // --- Tampilan Daftar Buku ---
         if (activeMenu === 'books') {
             return (
                 <>
@@ -221,36 +186,39 @@ const Dashboard = () => {
                     {isError && (
                         <div className="p-4 mb-6 bg-yellow-100 border border-yellow-300 text-yellow-800 rounded-xl font-medium">
                             <p>⚠️ Peringatan: {isError}</p>
-                            <p className="text-sm">Ini adalah simulasi, nama pengguna diset berdasarkan token di `localStorage` (`valid_member_token` atau `valid_admin_token`).</p>
+                            <p className="text-sm">Silakan ganti URL API base di `API_BASE_URL` dan pastikan server API (Laravel) berjalan.</p>
                         </div>
                     )}
 
                     <div className="bg-white rounded-3xl shadow-xl p-6 lg:p-8">
                         <h2 className="text-2xl lg:text-3xl font-bold mb-6" style={{ color: '#442D1C' }}>Semua Buku ({filteredBooks.length})</h2>
                         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 lg:gap-6">
-                            {filteredBooks.map(book => (
-                                <div key={book.id} className="group cursor-pointer">
-                                    <div 
-                                        className="rounded-xl shadow-md aspect-[3/4] p-3 lg:p-4 flex flex-col justify-end transform group-hover:scale-105 group-hover:shadow-xl transition-all duration-300"
-                                        style={{ background: book.cover }}
-                                    >
-                                        <div className="text-white">
-                                            <p className="text-xs opacity-90 mb-1">{book.title}</p>
-                                            <h4 className="text-sm font-bold">{book.subtitle}</h4>
-                                            <p className="text-xs opacity-70 mt-1">Stok: {book.stock}</p>
+                            {filteredBooks.length > 0 ? (
+                                filteredBooks.map(book => (
+                                    <div key={book.id} className="group cursor-pointer">
+                                        <div 
+                                            className="rounded-xl shadow-md aspect-[3/4] p-3 lg:p-4 flex flex-col justify-end transform group-hover:scale-105 group-hover:shadow-xl transition-all duration-300"
+                                            style={{ background: book.cover }}
+                                        >
+                                            <div className="text-white">
+                                                <p className="text-xs opacity-90 mb-1">{book.title}</p>
+                                                <h4 className="text-sm font-bold">{book.subtitle}</h4>
+                                                <p className="text-xs opacity-70 mt-1">Stok: {book.stock}</p>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                            ))}
+                                ))
+                            ) : (
+                                <p className="col-span-full text-center text-gray-500 py-10">Tidak ada buku ditemukan untuk kategori ini.</p>
+                            )}
                         </div>
                     </div>
                 </>
             );
         }
         
-        // ... (Render home dan borrowing tetap sama, hanya tampilan books yang disesuaikan untuk mengatasi peringatan) ...
-
-         if (activeMenu === 'home') {
+        // --- Tampilan Beranda (Home) ---
+        if (activeMenu === 'home') {
             const featuredBooks = filteredBooks.filter(b => b.featured).slice(0, 4); 
             const interestingBooks = filteredBooks.filter(b => !b.featured);
 
@@ -260,7 +228,7 @@ const Dashboard = () => {
                     {isError && (
                         <div className="p-4 mb-6 bg-yellow-100 border border-yellow-300 text-yellow-800 rounded-xl font-medium">
                             <p>⚠️ Peringatan: {isError}</p>
-                            <p className="text-sm">Ini adalah simulasi, nama pengguna diset berdasarkan token di `localStorage` (`valid_member_token` atau `valid_admin_token`).</p>
+                            <p className="text-sm">Silakan ganti URL API base di `API_BASE_URL` dan pastikan server API (Laravel) berjalan.</p>
                         </div>
                     )}
 
@@ -272,9 +240,9 @@ const Dashboard = () => {
                                     key={cat.id}
                                     onClick={() => setSelectedCategory(cat.id)}
                                     className={`flex items-center gap-2 px-6 py-3 rounded-full whitespace-nowrap font-medium transition-all ${
-                                        selectedCategory === cat.id
-                                            ? 'text-white shadow-lg'
-                                            : 'bg-white text-gray-600 hover:bg-orange-50'
+                                            selectedCategory === cat.id
+                                                ? 'text-white shadow-lg'
+                                                : 'bg-white text-gray-600 hover:bg-orange-50'
                                     }`}
                                     style={selectedCategory === cat.id ? { background: 'linear-gradient(90deg, #E8D1A7, #442D1C)' } : {}}
                                 >
@@ -310,19 +278,23 @@ const Dashboard = () => {
                     {/* Featured Books */}
                     <h3 className="text-xl font-semibold mb-4" style={{ color: '#442D1C' }}>Pilihan Unggulan ({featuredBooks.length})</h3>
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 lg:gap-6 mb-8">
-                        {featuredBooks.map(book => (
-                            <div key={book.id} className="group cursor-pointer">
-                                <div 
-                                    className="rounded-2xl shadow-lg aspect-[3/4] p-4 lg:p-6 flex flex-col justify-end transform group-hover:scale-105 group-hover:shadow-2xl transition-all duration-300"
-                                    style={{ background: book.cover }}
-                                >
-                                    <div className="text-white">
-                                        <p className="text-xs lg:text-sm opacity-90 mb-1">{book.title}</p>
-                                        <h3 className="text-base lg:text-xl font-bold">{book.subtitle}</h3>
+                        {featuredBooks.length > 0 ? (
+                            featuredBooks.map(book => (
+                                <div key={book.id} className="group cursor-pointer">
+                                    <div 
+                                        className="rounded-2xl shadow-lg aspect-[3/4] p-4 lg:p-6 flex flex-col justify-end transform group-hover:scale-105 group-hover:shadow-2xl transition-all duration-300"
+                                        style={{ background: book.cover }}
+                                    >
+                                        <div className="text-white">
+                                            <p className="text-xs lg:text-sm opacity-90 mb-1">{book.title}</p>
+                                            <h3 className="text-base lg:text-xl font-bold">{book.subtitle}</h3>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        ))}
+                            ))
+                        ) : (
+                            <p className="col-span-full text-center text-gray-500">Tidak ada buku unggulan ditemukan.</p>
+                        )}
                     </div>
 
                     {/* Can Be Interesting Section */}
@@ -331,25 +303,30 @@ const Dashboard = () => {
                             MUNGKIN MENARIK<br />BAGI ANDA ({interestingBooks.length})
                         </h3>
                         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 lg:gap-6">
-                            {interestingBooks.map(book => (
-                                <div key={book.id} className="group cursor-pointer">
-                                    <div 
-                                        className="rounded-xl shadow-md aspect-[3/4] p-3 lg:p-4 flex flex-col justify-end transform group-hover:scale-105 group-hover:shadow-xl transition-all duration-300"
-                                        style={{ background: book.cover }}
-                                    >
-                                        <div className="text-white">
-                                            <p className="text-xs opacity-90 mb-1">{book.title}</p>
-                                            <h4 className="text-sm font-bold">{book.subtitle}</h4>
+                            {interestingBooks.length > 0 ? (
+                                interestingBooks.map(book => (
+                                    <div key={book.id} className="group cursor-pointer">
+                                        <div 
+                                            className="rounded-xl shadow-md aspect-[3/4] p-3 lg:p-4 flex flex-col justify-end transform group-hover:scale-105 group-hover:shadow-xl transition-all duration-300"
+                                            style={{ background: book.cover }}
+                                        >
+                                            <div className="text-white">
+                                                <p className="text-xs opacity-90 mb-1">{book.title}</p>
+                                                <h4 className="text-sm font-bold">{book.subtitle}</h4>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                            ))}
+                                ))
+                            ) : (
+                                <p className="col-span-full text-center text-gray-500 py-5">Tidak ada buku lain ditemukan.</p>
+                            )}
                         </div>
                     </div>
                 </>
             );
         }
 
+        // --- Tampilan Peminjaman (Borrowing) ---
         if (activeMenu === 'borrowing') {
             if (userData.role === 'guest') {
                  return (
@@ -361,7 +338,7 @@ const Dashboard = () => {
                  );
             }
             
-            // Data riwayat peminjaman mock
+            // Data riwayat peminjaman mock (BELUM TERHUBUNG API)
             const mockBorrowings = [
                 { id: 1, title: 'Atomic Habits', borrowDate: '01 Okt 2025', returnDate: '08 Okt 2025', status: 'Dipinjam', statusClass: 'bg-green-100 text-green-700' },
                 { id: 2, title: 'The Subtle Art of Not Giving a F*ck', borrowDate: '25 Sep 2025', returnDate: '02 Okt 2025', status: 'Dikembalikan', statusClass: 'bg-blue-100 text-blue-700' },
