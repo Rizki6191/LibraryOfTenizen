@@ -1,0 +1,36 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "Library API Documentation",
+        "description": "Dokumentasi API untuk sistem peminjaman buku.",
+        "version": "1.0.0"
+    },
+    "servers": [
+        {
+            "url": "http://127.0.0.1:8000",
+            "description": "Server lokal Laravel"
+        }
+    ],
+    "paths": {
+        "api/books": {
+            "get": {
+                "tags": [
+                    "Books"
+                ],
+                "summary": "Ambil semua buku",
+                "operationId": "47d6e1f87cd5152cbc2669c7f6bb7f94",
+                "responses": {
+                    "200": {
+                        "description": "berhasil mengambil data buku"
+                    }
+                }
+            }
+        }
+    },
+    "tags": [
+        {
+            "name": "Books",
+            "description": "Books"
+        }
+    ]
+}
