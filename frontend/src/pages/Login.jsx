@@ -1,23 +1,16 @@
 // ============================================
-// 3. Login.jsx (Implemented for Login)
+// 3. Login.jsx (Improved for better integration)
 // ============================================
 import React, { useState } from "react";
 import "../styles/auth.css";
-import { Link, useNavigate } from "react-router-dom"; // Import useNavigate for redirection
-import { LoginHelmet } from "../components/SEOHelmet"; // Import helmet
-import axios from "axios"; // Using axios for easier API calls
+import { Link, useNavigate } from "react-router-dom";
+import { LoginHelmet } from "../components/SEOHelmet";
+import axios from "axios";
 
-// API endpoint URL
 const API_URL = "http://127.0.0.1:8000/api/login";
 
 export default function Login() {
-    // State for form data (only need email/NIS and password for login)
     const [formData, setFormData] = useState({
-        // Based on the provided successful response, the backend accepts an email, 
-        // but often for student systems, 'nis' might be used for login. 
-        // We'll stick to email and password as it's the most common approach for 'login' forms.
-        // If the backend truly only supports 'nis' for login, change 'email' to 'nis' and 
-        // update the input type and placeholder accordingly.
         email: "", 
         password: "",
     });
@@ -27,67 +20,62 @@ export default function Login() {
 
     const navigate = useNavigate();
 
-    // Handle input changes
     const handleChange = (e) => {
         setFormData({
             ...formData,
             [e.target.name]: e.target.value,
         });
-        // Clear error on input change
         if (error) setError(null);
     };
 
-    // Handle form submission
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
-        setError(null); // Clear previous errors
+        setError(null);
 
-        // In the API example, the request body includes many registration-related fields 
-        // (name, nis, major, grade, role). However, for a *login* endpoint, 
-        // typically only identifier (email/NIS) and password are required.
-        // We'll send what is generally required for login (email and password).
-        // If the backend insists on other fields for the *login* endpoint, you must adjust the payload.
         const payload = {
             email: formData.email,
             password: formData.password,
-            // Assuming the 'name', 'nis', 'major', 'grade', and 'role' fields in the
-            // example request body are mistakes or for a *register* endpoint, and 
-            // not truly needed for the '/api/login' endpoint to work.
-            // If they are needed, you should capture them in the form and add them here.
         };
 
         try {
             const response = await axios.post(API_URL, payload);
             
-            // Check for success in the response body
             if (response.data.success) {
                 console.log("Login successful:", response.data);
-                // 1. Store the token (e.g., in localStorage or a state management library)
+                
+                // SIMPAN DATA KE LOCALSTORAGE
                 localStorage.setItem('userToken', response.data.token);
-                // 2. Store user data if needed
-                localStorage.setItem('userData', JSON.stringify(response.data.data));
+                
+                // Pastikan data user disimpan dengan struktur yang konsisten
+                const userData = response.data.data || {};
+                localStorage.setItem('userData', JSON.stringify({
+                    name: userData.name || 'Anggota Perpustakaan',
+                    role: userData.role || 'member',
+                    email: userData.email || '',
+                    nis: userData.nis || '',
+                    major: userData.major || '',
+                    grade: userData.grade || '',
+                    created_at: userData.created_at || new Date().toISOString()
+                }));
 
-                // 3. Navigate to a protected route (e.g., dashboard)
+                // Navigate to dashboard
                 navigate('/dashboard'); 
             } else {
-                // Handle API-level errors if 'success' is false
                 setError(response.data.message || "Login failed due to an unknown error.");
             }
         } catch (err) {
             console.error("Login API Error:", err);
-            // Handle network or non-2xx status code errors
             if (err.response && err.response.data && err.response.data.message) {
-                setError(err.response.data.message); // Display message from API response
+                setError(err.response.data.message);
             } else {
-                setError("Failed to connect to the server or login. Please check your credentials.");
+                setError("Failed to connect to the server. Please check your credentials and try again.");
             }
         } finally {
             setLoading(false);
         }
     };
 
-    // Toggle password visibility
     const togglePasswordVisibility = () => {
         setShowPassword((s) => !s);
     };
@@ -107,30 +95,25 @@ export default function Login() {
                                         <h4 className="fw-bold">Masuk Akun</h4>
                                     </div>
                                     
-                                    {/* Display error message */}
                                     {error && (
                                         <div className="alert alert-danger" role="alert">
                                             {error}
                                         </div>
                                     )}
 
-                                    {/* Updated form for Login (Email/NIS and Password) */}
                                     <form onSubmit={handleSubmit}>
-                                        
-                                        {/* Input Email/NIS */}
                                         <div className="mb-3">
                                             <input 
-                                                type="text" // Can be 'text' for NIS or 'email'
+                                                type="text"
                                                 className="form-control" 
-                                                placeholder="Email" // Changed placeholder
-                                                name="email" // Use 'email' or 'nis' based on what the API accepts
+                                                placeholder="Email atau NIS"
+                                                name="email"
                                                 value={formData.email}
                                                 onChange={handleChange}
                                                 required 
                                             />
                                         </div>
 
-                                        {/* Input Password */}
                                         <div className="mb-4 input-group">
                                             <input
                                                 type={showPassword ? "text" : "password"}
@@ -152,11 +135,10 @@ export default function Login() {
                                             </button>
                                         </div>
 
-                                        {/* Submit Button */}
                                         <button 
                                             type="submit" 
                                             className="btn btn-primary mb-3 w-100" 
-                                            disabled={loading} // Disable button while loading
+                                            disabled={loading}
                                         >
                                             {loading ? (
                                                 <>

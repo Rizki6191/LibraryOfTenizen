@@ -1,13 +1,13 @@
 import React, { useState } from "react";
 import "../styles/auth.css";
-import { Link, useNavigate } from "react-router-dom"; // Import useNavigate for redirection
-import { RegisterHelmet } from "../components/SEOHelmet"; 
+import { Link, useNavigate } from "react-router-dom";
+import { RegisterHelmet } from "../components/SEOHelmet";
 
 export default function Register() {
-    const navigate = useNavigate(); // Hook for navigation
+    const navigate = useNavigate();
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-    
+
     // 1. State for form data, including all required API fields
     const [formData, setFormData] = useState({
         name: "",
@@ -16,7 +16,7 @@ export default function Register() {
         grade: "",
         email: "",
         password: "",
-        confirmPassword: "", // Added for client-side validation, but not sent to API
+        confirmPassword: "", // Added for client-side validation
         role: "member", // Default role as per API payload
     });
 
@@ -38,22 +38,14 @@ export default function Register() {
         e.preventDefault();
         setError(null);
 
-        // Basic client-side validation
+        // Basic client-side validation: Check if passwords match
         if (formData.password !== formData.confirmPassword) {
             setError("Kata Sandi dan Konfirmasi Kata Sandi tidak cocok.");
             return;
         }
 
         // Prepare data for API, excluding confirmPassword
-        const apiPayload = {
-            name: formData.name,
-            nis: formData.nis,
-            major: formData.major,
-            grade: formData.grade,
-            email: formData.email,
-            password: formData.password,
-            role: formData.role, 
-        };
+        const { confirmPassword, ...apiPayload } = formData;
 
         setLoading(true);
 
@@ -70,10 +62,11 @@ export default function Register() {
 
             if (response.ok) {
                 // Registration successful
-                alert("Pendaftaran Berhasil! Silakan masuk.");
+                // alert("Pendaftaran Berhasil! Silakan masuk.");
                 navigate("/login"); // Redirect to login page
             } else {
                 // Registration failed (e.g., NIS or email already exists)
+                // Use the message from the backend, or a generic fallback
                 const errorMessage = result.message || "Pendaftaran gagal. Silakan coba lagi.";
                 setError(errorMessage);
             }
@@ -106,7 +99,7 @@ export default function Register() {
 
                                     {/* Attach handleSubmit to the form's onSubmit */}
                                     <form onSubmit={handleSubmit}>
-                                        
+
                                         {/* Display error message if any */}
                                         {error && (
                                             <div className="alert alert-danger" role="alert">
@@ -115,39 +108,39 @@ export default function Register() {
                                         )}
 
                                         <div className="mb-3">
-                                            <input 
-                                                type="text" 
-                                                className="form-control" 
-                                                placeholder="Nama Lengkap" 
-                                                name="name" // Added name attribute
-                                                value={formData.name} // Added value attribute
-                                                onChange={handleChange} // Added onChange handler
-                                                required 
+                                            <input
+                                                type="text"
+                                                className="form-control"
+                                                placeholder="Nama Lengkap"
+                                                name="name"
+                                                value={formData.name}
+                                                onChange={handleChange}
+                                                required
                                             />
                                         </div>
 
                                         <div className="mb-3">
-                                            <input 
-                                                type="text" 
-                                                className="form-control" 
-                                                placeholder="NIS" 
-                                                name="nis" // Added name attribute
-                                                value={formData.nis} // Added value attribute
-                                                onChange={handleChange} // Added onChange handler
+                                            <input
+                                                type="text"
+                                                className="form-control"
+                                                placeholder="NIS"
+                                                name="nis"
+                                                value={formData.nis}
+                                                onChange={handleChange}
                                                 maxLength="7" // Changed to 7 to match example data (2020101 is 7 digits)
-                                                pattern="\d*"
-                                                inputMode="numeric"
-                                                required 
+                                                pattern="\d*" // Client-side validation for numeric input
+                                                inputMode="numeric" // Better mobile keyboard
+                                                required
                                             />
                                         </div>
 
                                         <div className="row g-2 mb-3">
                                             <div className="col-6">
-                                                <select 
-                                                    className="form-select" 
-                                                    name="grade" // Added name attribute
-                                                    value={formData.grade} // Added value attribute
-                                                    onChange={handleChange} // Added onChange handler
+                                                <select
+                                                    className="form-select"
+                                                    name="grade"
+                                                    value={formData.grade}
+                                                    onChange={handleChange}
                                                     required
                                                 >
                                                     <option value="">Pilih Kelas</option>
@@ -157,11 +150,11 @@ export default function Register() {
                                                 </select>
                                             </div>
                                             <div className="col-6">
-                                                <select 
-                                                    className="form-select" 
-                                                    name="major" // Added name attribute
-                                                    value={formData.major} // Added value attribute
-                                                    onChange={handleChange} // Added onChange handler
+                                                <select
+                                                    className="form-select"
+                                                    name="major"
+                                                    value={formData.major}
+                                                    onChange={handleChange}
                                                     required
                                                 >
                                                     <option value="">Pilih Jurusan</option>
@@ -172,20 +165,19 @@ export default function Register() {
                                                     <option value="AKL2">AKL2</option>
                                                     <option value="ML">ML</option>
                                                     <option value="MP">MP</option>
-                                                    {/* NOTE: You should map the options to their correct values (e.g., BR, BD, ML, AKL in your list should likely be RPL, TKJ, MM, TKRO, TBSM if they are the majors). I've corrected them to the API payload's key names. */}
                                                 </select>
                                             </div>
                                         </div>
 
                                         <div className="mb-3">
-                                            <input 
-                                                type="email" 
-                                                className="form-control" 
-                                                placeholder="Email" 
-                                                name="email" // Added name attribute
-                                                value={formData.email} // Added value attribute
-                                                onChange={handleChange} // Added onChange handler
-                                                required 
+                                            <input
+                                                type="email"
+                                                className="form-control"
+                                                placeholder="Email"
+                                                name="email"
+                                                value={formData.email}
+                                                onChange={handleChange}
+                                                required
                                             />
                                         </div>
 
@@ -194,9 +186,9 @@ export default function Register() {
                                                 type={showPassword ? "text" : "password"}
                                                 className="form-control"
                                                 placeholder="Kata Sandi"
-                                                name="password" // Added name attribute
-                                                value={formData.password} // Added value attribute
-                                                onChange={handleChange} // Added onChange handler
+                                                name="password"
+                                                value={formData.password}
+                                                onChange={handleChange}
                                                 required
                                             />
                                             <button
@@ -214,9 +206,9 @@ export default function Register() {
                                                 type={showConfirmPassword ? "text" : "password"}
                                                 className="form-control"
                                                 placeholder="Konfirmasi Kata Sandi"
-                                                name="confirmPassword" // Added name attribute for this field
-                                                value={formData.confirmPassword} // Added value attribute
-                                                onChange={handleChange} // Added onChange handler
+                                                name="confirmPassword"
+                                                value={formData.confirmPassword}
+                                                onChange={handleChange}
                                                 required
                                             />
                                             <button
@@ -229,17 +221,17 @@ export default function Register() {
                                             </button>
                                         </div>
 
-                                        <button 
-                                            type="submit" 
+                                        <button
+                                            type="submit"
                                             className="btn btn-primary mb-3"
-                                            disabled={loading} // Disable button while loading
+                                            disabled={loading} // Disable button while submission is in progress
                                         >
                                             {loading ? 'Mendaftar...' : 'Daftar'}
                                         </button>
 
                                         <div className="text-center">
                                             <p className="small mb-0">
-                                                Sudah punya akun? 
+                                                Sudah punya akun?
                                                 <Link to="/login" className="auth-link">Masuk disini</Link>
                                             </p>
                                         </div>

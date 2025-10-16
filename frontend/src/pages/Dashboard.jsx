@@ -1,25 +1,29 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import axios from 'axios'; // ⚠️ PERBAIKAN: Import axios asli
-import { Home, Book, List, LogOut, Menu, X, Search, BookOpen, GraduationCap, Heart, TrendingUp, Users } from 'lucide-react';
-import "../styles/dashboard.css"; 
+import axios from 'axios';
+import { Link, useNavigate } from "react-router-dom";
+import { Home, Book, List, LogOut, Menu, X, Search, BookOpen, GraduationCap, Heart, TrendingUp, Users, User, Mail, School, IdCard, Calendar } from 'lucide-react';
+import "../styles/dashboard.css";
 
 // ===============================================
 // API Configuration & Data Setup
 // ===============================================
 
 const API_BASE_URL = "http://127.0.0.1:8000/api";
-const BOOKS_API_URL = `${API_BASE_URL}/books`; // ⚠️ API nyata yang akan diakses
+const BOOKS_API_URL = `${API_BASE_URL}/books`;
+const USER_PROFILE_URL = `${API_BASE_URL}/user`;
+const BORROWING_API_URL = `${API_BASE_URL}/borrowing`;
+// const USER_PROFILE_URL = `${API_BASE_URL}/user`;
 
 // --- Data Tambahan (Tetap) ---
 const categoryMap = {
     2: 'psychology',
-    3: 'nonfiction',
+    3: 'nonfiction', 
     4: 'fantasy',
-    5: 'detective', 
+    5: 'detective',
     6: 'drama',    
     7: 'drama',    
-    8: 'fantasy', 
-    9: 'nonfiction' 
+    8: 'fantasy',
+    9: 'nonfiction'
 };
 
 const categories = [
@@ -52,20 +56,79 @@ const getBookCoverStyle = (id) => {
 };
 
 const Dashboard = () => {
+    const navigate = useNavigate();
+    
     // State untuk UI/Navigasi
     const [sidebarOpen, setSidebarOpen] = useState(false);
-    const [activeMenu, setActiveMenu] = useState('books'); // Default ke Daftar Buku
+    const [activeMenu, setActiveMenu] = useState('books');
     const [selectedCategory, setSelectedCategory] = useState('all');
+    const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+    const [showProfileModal, setShowProfileModal] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
 
     // State untuk Data
     const [books, setBooks] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isError, setIsError] = useState(null);
-    // Default user: Anggota Perpustakaan
-    const [userData, setUserData] = useState({ name: 'Anggota Perpustakaan', role: 'member' }); 
+    
+    // State user data yang akan diisi dari API
+    const [userData, setUserData] = useState({ 
+        name: 'Loading...', 
+        role: 'guest',
+        email: '',
+        nis: '',
+        major: '',
+        grade: '',
+        created_at: ''
+    });
 
-    // Daftar menu yang difilter berdasarkan peran pengguna
     const menuItems = allMenuItems.filter(item => item.roles.includes(userData.role));
+
+    // Fungsi untuk mendapatkan data user dari token
+    const fetchUserData = useCallback(async () => {
+        const token = localStorage.getItem('userToken');
+        
+        if (!token) {
+            setUserData({ 
+                name: 'Tamu', 
+                role: 'guest',
+                email: '',
+                nis: '',
+                major: '',
+                grade: '',
+                created_at: ''
+            });
+            return;
+        }
+
+        try {
+            const response = await axios.get(USER_PROFILE_URL, {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    Accept: 'application/json'
+                }
+            });
+
+            if (response.data && response.data.data) {
+                const user = response.data.data;
+                setUserData({
+                    name: user.name || 'Anggota Perpustakaan',
+                    role: user.role || 'member',
+                    email: user.email || '',
+                    nis: user.nis || '',
+                    major: user.major || '',
+                    grade: user.grade || '',
+                    created_at: user.created_at || ''
+                });
+            }
+        } catch (error) {
+            console.error("Error fetching user data:", error);
+            const savedUserData = localStorage.getItem('userData');
+            if (savedUserData) {
+                setUserData(JSON.parse(savedUserData));
+            }
+        }
+    }, []);
 
     // --- Logika Pengambilan Data Buku Asli ---
     const fetchBooks = useCallback(async () => {
@@ -74,97 +137,94 @@ const Dashboard = () => {
 
         try {
             const token = localStorage.getItem('userToken');
-            let currentName = 'Tamu';
-            let currentRole = 'guest';
-
-            // Logika Otentikasi & Peran Fleksibel (Simulasi Peran Berdasarkan Token)
-            if (token === 'valid_admin_token') {
-                currentName = 'Admin Perpustakaan';
-                currentRole = 'admin';
-                // ⚠️ PESAN PERINGATAN DISESUAIKAN: Data diambil dari API asli.
-                setIsError("Simulasi Admin: Token ditemukan. Data diambil dari API books.");
-            } else if (token === 'valid_member_token') { 
-                currentName = 'Anggota Perpustakaan'; 
-                currentRole = 'member';
-                // ⚠️ PESAN PERINGATAN DISESUAIKAN: Data diambil dari API asli.
-                setIsError("Simulasi Anggota: Token ditemukan. Data diambil dari API books.");
-            } else {
-                currentName = 'Tamu';
-                currentRole = 'guest';
-                setIsError("Token tidak ditemukan. Anda berhak melihat data buku."); 
-            }
-
-            setUserData({ name: currentName, role: currentRole });
             
-            // Panggilan API ke API nyata (http://127.0.0.1:8000/api/books)
+            // Ambil data user terlebih dahulu
+            await fetchUserData();
+
+            // Panggilan API untuk mendapatkan buku
             const response = await axios.get(BOOKS_API_URL, {
                 headers: {
-                    Authorization: `Bearer ${token}` 
+                    Authorization: `Bearer ${token}`,
+                    Accept: 'application/json'
                 }
             });
 
-            // Asumsi API mengembalikan format { status: true, data: [...] }
+            console.log("Books API Response:", response.data); // Debug log
+
             if (response.data && response.data.data) { 
                 const apiBooks = response.data.data;
                 
                 const processedBooks = apiBooks.map((book, index) => ({
                     id: book.id,
-                    // Membalik posisi author dan title untuk tampilan cover agar judul lebih besar
-                    title: book.author, 
-                    subtitle: book.title, 
-                    // Gunakan ID buku, bukan index, untuk gaya cover yang lebih konsisten 
+                    title: book.title, 
+                    author: book.author,
+                    subtitle: book.description || `oleh ${book.author}`,
                     cover: getBookCoverStyle(book.id), 
                     category: categoryMap[book.category_id] || 'nonfiction', 
-                    featured: index < 3, // 3 buku pertama dianggap unggulan
-                    stock: book.stock
+                    featured: index < 3,
+                    stock: book.stock || 0,
+                    category_id: book.category_id,
+                    published_year: book.published_year,
+                    isbn: book.isbn
                 }));
 
                 setBooks(processedBooks);
             } else {
-                setIsError("Gagal mengambil data buku dari API. Format data tidak sesuai atau status false.");
-            }
-
-            // Pengecekan ulang menu aktif (jika peran berubah)
-            const availableMenus = allMenuItems.filter(item => item.roles.includes(currentRole));
-            if (!availableMenus.some(item => item.id === activeMenu)) {
-                setActiveMenu('home');
+                setIsError("Gagal mengambil data buku dari API. Format data tidak sesuai.");
             }
 
         } catch (error) {
             console.error("Error fetching books:", error);
-            // ⚠️ PESAN ERROR DISESUAIKAN untuk koneksi API
             setIsError(`Terjadi kesalahan saat memuat data: ${error.message}. Pastikan API server berjalan di ${API_BASE_URL}.`);
-            setBooks([]); // Kosongkan buku jika gagal
+            setBooks([]);
         } finally {
             setIsLoading(false);
         }
-    }, [activeMenu]); 
+    }, [fetchUserData]);
 
     // Panggil fetchBooks saat komponen dimuat
     useEffect(() => {
-        // PERBAIKAN: Set token default member JIKA TIDAK ADA token sama sekali.
-        if (!localStorage.getItem('userToken')) {
-             localStorage.setItem('userToken', 'valid_member_token'); 
-        }
-
         fetchBooks();
     }, [fetchBooks]);
 
-    // --- Logout Functionality (Simulasi) ---
+    // --- Logout Functionality ---
     const handleLogout = () => {
         localStorage.removeItem('userToken');
-        // Set token ke null untuk simulasi 'Tamu'
-        setUserData({ name: 'Tamu', role: 'guest' });
+        localStorage.removeItem('userData');
+        setUserData({ 
+            name: 'Tamu', 
+            role: 'guest',
+            email: '',
+            nis: '',
+            major: '',
+            grade: '',
+            created_at: ''
+        });
         setActiveMenu('home');
+        navigate("/login");
         setBooks([]);
-        setIsError("Anda telah logout. Mencoba mengambil data sebagai Tamu...");
-        // Panggil fetchBooks lagi untuk mengambil data sebagai Guest/Tamu
-        fetchBooks(); 
+        setIsError("Anda telah logout.");
+        setProfileDropdownOpen(false);
     };
 
-    const filteredBooks = selectedCategory === 'all'
-        ? books
-        : books.filter(book => book.category === selectedCategory);
+    // --- Profile Handler ---
+    const handleProfileClick = () => {
+        setProfileDropdownOpen(!profileDropdownOpen);
+    };
+
+    const handleViewProfile = () => {
+        setShowProfileModal(true);
+        setProfileDropdownOpen(false);
+    };
+
+    // Filter books berdasarkan kategori dan pencarian
+    const filteredBooks = books.filter(book => {
+        const matchesCategory = selectedCategory === 'all' || book.category === selectedCategory;
+        const matchesSearch = searchQuery === '' || 
+            book.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            book.author.toLowerCase().includes(searchQuery.toLowerCase());
+        return matchesCategory && matchesSearch;
+    });
 
     // Helper untuk rendering konten berdasarkan menu yang aktif
     const renderContent = () => {
@@ -182,7 +242,7 @@ const Dashboard = () => {
         if (activeMenu === 'books') {
             return (
                 <>
-                    {/* Pesan Error/Peringatan Diletakkan di sini */}
+                    {/* Pesan Error/Peringatan */}
                     {isError && (
                         <div className="p-4 mb-6 bg-yellow-100 border border-yellow-300 text-yellow-800 rounded-xl font-medium">
                             <p>⚠️ Peringatan: {isError}</p>
@@ -191,8 +251,49 @@ const Dashboard = () => {
                     )}
 
                     <div className="bg-white rounded-3xl shadow-xl p-6 lg:p-8">
-                        <h2 className="text-2xl lg:text-3xl font-bold mb-6" style={{ color: '#442D1C' }}>Semua Buku ({filteredBooks.length})</h2>
-                        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 lg:gap-6">
+                        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6">
+                            <h2 className="text-2xl lg:text-3xl font-bold mb-4 lg:mb-0" style={{ color: '#442D1C' }}>
+                                Semua Buku ({filteredBooks.length})
+                            </h2>
+                            
+                            {/* Search Bar untuk Books Page */}
+                            <div className="w-full lg:w-64">
+                                <div className="relative">
+                                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                    <input
+                                        type="text"
+                                        placeholder="Cari judul atau penulis..."
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        className="w-full pl-10 pr-4 py-2 rounded-full bg-gray-50 border border-gray-200 focus:border-amber-400 focus:bg-white transition-all outline-none text-sm"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Categories Filter */}
+                        <div className="mb-6">
+                            <div className="flex gap-2 overflow-x-auto pb-4" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                                {categories.map(cat => (
+                                    <button
+                                        key={cat.id}
+                                        onClick={() => setSelectedCategory(cat.id)}
+                                        className={`flex items-center gap-2 px-4 py-2 rounded-full whitespace-nowrap font-medium transition-all text-sm ${
+                                                selectedCategory === cat.id
+                                                    ? 'text-white shadow-lg'
+                                                    : 'bg-gray-100 text-gray-600 hover:bg-orange-50'
+                                        }`}
+                                        style={selectedCategory === cat.id ? { background: 'linear-gradient(90deg, #E8D1A7, #442D1C)' } : {}}
+                                    >
+                                        <cat.icon className="w-3 h-3" />
+                                        <span>{cat.name}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Books Grid */}
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 lg:gap-6">
                             {filteredBooks.length > 0 ? (
                                 filteredBooks.map(book => (
                                     <div key={book.id} className="group cursor-pointer">
@@ -201,15 +302,24 @@ const Dashboard = () => {
                                             style={{ background: book.cover }}
                                         >
                                             <div className="text-white">
-                                                <p className="text-xs opacity-90 mb-1">{book.title}</p>
-                                                <h4 className="text-sm font-bold">{book.subtitle}</h4>
-                                                <p className="text-xs opacity-70 mt-1">Stok: {book.stock}</p>
+                                                <p className="text-xs opacity-90 mb-1 truncate">{book.author}</p>
+                                                <h4 className="text-sm font-bold line-clamp-2 mb-1">{book.title}</h4>
+                                                <div className="flex justify-between items-center text-xs opacity-70">
+                                                    <span>Stok: {book.stock}</span>
+                                                    <span className="capitalize">{book.category}</span>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
                                 ))
                             ) : (
-                                <p className="col-span-full text-center text-gray-500 py-10">Tidak ada buku ditemukan untuk kategori ini.</p>
+                                <div className="col-span-full text-center py-12">
+                                    <Book className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                                    <p className="text-gray-500 text-lg mb-2">Tidak ada buku ditemukan</p>
+                                    <p className="text-gray-400 text-sm">
+                                        {searchQuery ? `Untuk pencarian "${searchQuery}"` : `Untuk kategori ${categories.find(c => c.id === selectedCategory)?.name || 'yang dipilih'}`}
+                                    </p>
+                                </div>
                             )}
                         </div>
                     </div>
@@ -219,8 +329,8 @@ const Dashboard = () => {
         
         // --- Tampilan Beranda (Home) ---
         if (activeMenu === 'home') {
-            const featuredBooks = filteredBooks.filter(b => b.featured).slice(0, 4); 
-            const interestingBooks = filteredBooks.filter(b => !b.featured);
+            const featuredBooks = books.filter(b => b.featured).slice(0, 4); 
+            const interestingBooks = books.filter(b => !b.featured);
 
             return (
                 <>
@@ -253,7 +363,7 @@ const Dashboard = () => {
                         </div>
                     </div>
 
-                    {/* Hero Section - Konten dinamis berdasarkan peran */}
+                    {/* Hero Section */}
                     <div className="bg-white rounded-3xl shadow-xl p-6 lg:p-8 mb-8 relative overflow-hidden">
                         <div className="absolute top-0 right-0 w-64 h-64 rounded-full blur-3xl opacity-30" style={{ background: 'linear-gradient(135deg, #fde68a, #fed7aa)' }}></div>
                         <div className="relative z-10">
@@ -286,14 +396,17 @@ const Dashboard = () => {
                                         style={{ background: book.cover }}
                                     >
                                         <div className="text-white">
-                                            <p className="text-xs lg:text-sm opacity-90 mb-1">{book.title}</p>
-                                            <h3 className="text-base lg:text-xl font-bold">{book.subtitle}</h3>
+                                            <p className="text-xs lg:text-sm opacity-90 mb-1">{book.author}</p>
+                                            <h3 className="text-base lg:text-xl font-bold">{book.title}</h3>
                                         </div>
                                     </div>
                                 </div>
                             ))
                         ) : (
-                            <p className="col-span-full text-center text-gray-500">Tidak ada buku unggulan ditemukan.</p>
+                            <div className="col-span-full text-center py-8">
+                                <Book className="w-12 h-12 text-gray-300 mx-auto mb-2" />
+                                <p className="text-gray-500">Tidak ada buku unggulan ditemukan.</p>
+                            </div>
                         )}
                     </div>
 
@@ -311,14 +424,17 @@ const Dashboard = () => {
                                             style={{ background: book.cover }}
                                         >
                                             <div className="text-white">
-                                                <p className="text-xs opacity-90 mb-1">{book.title}</p>
-                                                <h4 className="text-sm font-bold">{book.subtitle}</h4>
+                                                <p className="text-xs opacity-90 mb-1">{book.author}</p>
+                                                <h4 className="text-sm font-bold">{book.title}</h4>
                                             </div>
                                         </div>
                                     </div>
                                 ))
                             ) : (
-                                <p className="col-span-full text-center text-gray-500 py-5">Tidak ada buku lain ditemukan.</p>
+                                <div className="col-span-full text-center py-8">
+                                    <Book className="w-12 h-12 text-gray-300 mx-auto mb-2" />
+                                    <p className="text-gray-500">Tidak ada buku lain ditemukan.</p>
+                                </div>
                             )}
                         </div>
                     </div>
@@ -338,7 +454,7 @@ const Dashboard = () => {
                  );
             }
             
-            // Data riwayat peminjaman mock (BELUM TERHUBUNG API)
+            // Data riwayat peminjaman mock
             const mockBorrowings = [
                 { id: 1, title: 'Atomic Habits', borrowDate: '01 Okt 2025', returnDate: '08 Okt 2025', status: 'Dipinjam', statusClass: 'bg-green-100 text-green-700' },
                 { id: 2, title: 'The Subtle Art of Not Giving a F*ck', borrowDate: '25 Sep 2025', returnDate: '02 Okt 2025', status: 'Dikembalikan', statusClass: 'bg-blue-100 text-blue-700' },
@@ -384,6 +500,17 @@ const Dashboard = () => {
         return null;
     };
 
+    // Format tanggal untuk ditampilkan
+    const formatDate = (dateString) => {
+        if (!dateString) return '-';
+        const date = new Date(dateString);
+        return date.toLocaleDateString('id-ID', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+    };
+
     return (
         <div className="min-h-screen bg-gradient-to-br from-orange-50 via-amber-50 to-orange-100 font-sans">
             {/* Sidebar */}
@@ -411,7 +538,6 @@ const Dashboard = () => {
                         </div>
 
                         <nav className="space-y-2">
-                            {/* Menu item difilter berdasarkan peran pengguna */}
                             {menuItems.map(item => (
                                 <button
                                     key={item.id}
@@ -473,22 +599,49 @@ const Dashboard = () => {
                                 <input
                                     type="text"
                                     placeholder="Cari nama buku atau penulis..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
                                     className="w-full pl-12 pr-4 py-3 rounded-full bg-gray-50 border-2 border-transparent focus:border-amber-400 focus:bg-white transition-all outline-none text-sm"
                                 />
                             </div>
                         </div>
 
-                        {/* User Profile */}
-                        <div className="flex items-center gap-3 bg-orange-50 px-4 py-2 rounded-full cursor-pointer hover:bg-orange-100 transition-all">
-                            <div className="w-10 h-10 rounded-full object-cover border-2 border-amber-300 flex items-center justify-center font-bold text-lg" 
-                                style={{ backgroundColor: '#FACC15', color: '#442D1C' }}
+                        {/* User Profile dengan Dropdown */}
+                        <div className="relative">
+                            <div 
+                                className="flex items-center gap-3 bg-orange-50 px-4 py-2 rounded-full cursor-pointer hover:bg-orange-100 transition-all"
+                                onClick={handleProfileClick}
                             >
-                                {userData.name[0].toUpperCase()}
+                                <div className="w-10 h-10 rounded-full object-cover border-2 border-amber-300 flex items-center justify-center font-bold text-lg" 
+                                    style={{ backgroundColor: '#FACC15', color: '#442D1C' }}
+                                >
+                                    {userData.name[0].toUpperCase()}
+                                </div>
+                                <div className="hidden md:block">
+                                    <p className="font-semibold text-sm" style={{ color: '#442D1C' }}>{userData.name}</p>
+                                    <p className="text-xs text-gray-500 capitalize">{userData.role}</p>
+                                </div>
                             </div>
-                            <div className="hidden md:block">
-                                <p className="font-semibold text-sm" style={{ color: '#442D1C' }}>{userData.name}</p>
-                                <p className="text-xs text-gray-500 capitalize">{userData.role}</p>
-                            </div>
+
+                            {/* Dropdown Menu */}
+                            {profileDropdownOpen && (
+                                <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-2xl border border-gray-100 py-2 z-50">
+                                    <button
+                                        onClick={handleViewProfile}
+                                        className="w-full flex items-center gap-3 px-4 py-3 text-left text-gray-700 hover:bg-orange-50 transition-colors"
+                                    >
+                                        <User className="w-4 h-4" />
+                                        <span>Profil Saya</span>
+                                    </button>
+                                    <button
+                                        onClick={handleLogout}
+                                        className="w-full flex items-center gap-3 px-4 py-3 text-left text-red-600 hover:bg-red-50 transition-colors"
+                                    >
+                                        <LogOut className="w-4 h-4" />
+                                        <span>Logout</span>
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </header>
@@ -498,6 +651,106 @@ const Dashboard = () => {
                     {renderContent()}
                 </main>
             </div>
+
+            {/* Modal Profil */}
+            {showProfileModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+                        {/* Header Modal */}
+                        <div className="p-6 border-b border-gray-100">
+                            <div className="flex items-center justify-between">
+                                <h2 className="text-2xl font-bold" style={{ color: '#442D1C' }}>Profil Saya</h2>
+                                <button 
+                                    onClick={() => setShowProfileModal(false)}
+                                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                                >
+                                    <X className="w-5 h-5 text-gray-500" />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Content Modal */}
+                        <div className="p-6">
+                            {/* Foto Profil */}
+                            <div className="flex justify-center mb-6">
+                                <div className="w-24 h-24 rounded-full border-4 border-amber-300 flex items-center justify-center font-bold text-3xl"
+                                    style={{ backgroundColor: '#FACC15', color: '#442D1C' }}>
+                                    {userData.name[0].toUpperCase()}
+                                </div>
+                            </div>
+
+                            {/* Informasi Profil */}
+                            <div className="space-y-4">
+                                <div className="flex items-center gap-3 p-3 bg-orange-50 rounded-xl">
+                                    <User className="w-5 h-5 text-amber-600" />
+                                    <div>
+                                        <p className="text-sm text-gray-500">Nama Lengkap</p>
+                                        <p className="font-semibold" style={{ color: '#442D1C' }}>{userData.name}</p>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center gap-3 p-3 bg-orange-50 rounded-xl">
+                                    <Mail className="w-5 h-5 text-amber-600" />
+                                    <div>
+                                        <p className="text-sm text-gray-500">Email</p>
+                                        <p className="font-semibold" style={{ color: '#442D1C' }}>{userData.email || '-'}</p>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center gap-3 p-3 bg-orange-50 rounded-xl">
+                                    <IdCard className="w-5 h-5 text-amber-600" />
+                                    <div>
+                                        <p className="text-sm text-gray-500">NIS</p>
+                                        <p className="font-semibold" style={{ color: '#442D1C' }}>{userData.nis || '-'}</p>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center gap-3 p-3 bg-orange-50 rounded-xl">
+                                    <School className="w-5 h-5 text-amber-600" />
+                                    <div>
+                                        <p className="text-sm text-gray-500">Jurusan</p>
+                                        <p className="font-semibold" style={{ color: '#442D1C' }}>{userData.major || '-'}</p>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center gap-3 p-3 bg-orange-50 rounded-xl">
+                                    <GraduationCap className="w-5 h-5 text-amber-600" />
+                                    <div>
+                                        <p className="text-sm text-gray-500">Kelas</p>
+                                        <p className="font-semibold" style={{ color: '#442D1C' }}>{userData.grade || '-'}</p>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center gap-3 p-3 bg-orange-50 rounded-xl">
+                                    <Calendar className="w-5 h-5 text-amber-600" />
+                                    <div>
+                                        <p className="text-sm text-gray-500">Bergabung Sejak</p>
+                                        <p className="font-semibold" style={{ color: '#442D1C' }}>{formatDate(userData.created_at)}</p>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center gap-3 p-3 bg-orange-50 rounded-xl">
+                                    <Users className="w-5 h-5 text-amber-600" />
+                                    <div>
+                                        <p className="text-sm text-gray-500">Role</p>
+                                        <p className="font-semibold capitalize" style={{ color: '#442D1C' }}>{userData.role}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Footer Modal */}
+                        <div className="p-6 border-t border-gray-100">
+                            <button
+                                onClick={() => setShowProfileModal(false)}
+                                className="w-full py-3 px-6 bg-amber-500 text-white rounded-xl font-semibold hover:bg-amber-600 transition-colors"
+                            >
+                                Tutup
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
