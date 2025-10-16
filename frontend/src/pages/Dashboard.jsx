@@ -12,6 +12,7 @@ const API_BASE_URL = "http://127.0.0.1:8000/api";
 const BOOKS_API_URL = `${API_BASE_URL}/books`;
 const USER_PROFILE_URL = `${API_BASE_URL}/user`;
 const BORROWING_API_URL = `${API_BASE_URL}/borrowing`;
+const CATEGORY_API_URL = `${API_BASE_URL}/categories`;
 
 // --- Data Tambahan (Tetap) ---
 const categoryMap = {
