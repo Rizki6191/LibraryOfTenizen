@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { Link, useNavigate } from "react-router-dom";
-import { Home, Book, List, LogOut, Menu, X, Search, BookOpen, GraduationCap, Heart, TrendingUp, Users, User, Mail, School, IdCard, Calendar, Clock, Hash, CalendarDays, AlertCircle, CheckCircle } from 'lucide-react';
+import { Home, Book, List, LogOut, Menu, X, Search, BookOpen, GraduationCap, Heart, TrendingUp, Users, User, Mail, School, IdCard, Calendar, Clock, Hash, CalendarDays, AlertCircle, CheckCircle, Eye, Edit, Trash2, Plus, Save, RotateCcw } from 'lucide-react';
 import "../styles/dashboard.css";
 
 // ===============================================
@@ -12,7 +12,7 @@ const API_BASE_URL = "http://127.0.0.1:8000/api";
 const BOOKS_API_URL = `${API_BASE_URL}/books`;
 const USER_PROFILE_URL = `${API_BASE_URL}/user`;
 const BORROWING_API_URL = `${API_BASE_URL}/borrowing`;
-const CATEGORY_API_URL = `${API_BASE_URL}/categories`;
+const ALL_BORROWINGS_URL = `${API_BASE_URL}/borrowing`;
 
 // --- Data Tambahan (Tetap) ---
 const categoryMap = {
@@ -67,13 +67,27 @@ const Dashboard = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedBook, setSelectedBook] = useState(null);
     const [borrowLoading, setBorrowLoading] = useState(false);
+    const [selectedUser, setSelectedUser] = useState(null);
+    const [isEditing, setIsEditing] = useState(false);
+    const [editBookData, setEditBookData] = useState({});
+    const [showCreateModal, setShowCreateModal] = useState(false);
+    const [newBookData, setNewBookData] = useState({
+        title: '',
+        author: '',
+        description: '',
+        category_id: 3,
+        stock: 1,
+        published_year: new Date().getFullYear(),
+        isbn: ''
+    });
 
     // State untuk Data
     const [books, setBooks] = useState([]);
-    const [borrowings, setBorrowings] = useState([]); // State untuk data peminjaman
+    const [borrowings, setBorrowings] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [isLoadingBorrowings, setIsLoadingBorrowings] = useState(false); // Loading khusus peminjaman
+    const [isLoadingBorrowings, setIsLoadingBorrowings] = useState(false);
     const [isError, setIsError] = useState(null);
+    const [isSaving, setIsSaving] = useState(false);
     
     // State user data yang akan diisi dari API
     const [userData, setUserData] = useState({ 
@@ -84,7 +98,7 @@ const Dashboard = () => {
         major: '',
         grade: '',
         created_at: '',
-        id: null // Tambahkan id user
+        id: null
     });
 
     const menuItems = allMenuItems.filter(item => item.roles.includes(userData.role));
@@ -141,37 +155,60 @@ const Dashboard = () => {
         }
     }, []);
 
-    // Fungsi untuk mengambil data peminjaman user
-    const fetchUserBorrowings = useCallback(async () => {
+    // Fungsi untuk mengambil data peminjaman
+    const fetchBorrowings = useCallback(async () => {
         const token = localStorage.getItem('userToken');
         
-        if (!token || userData.role === 'guest') {
+        if (!token || (userData.role === 'guest' && userData.role !== 'admin')) {
             setBorrowings([]);
             return;
         }
 
         setIsLoadingBorrowings(true);
         try {
-            const response = await axios.get(BORROWING_API_URL, {
+            let url = ALL_BORROWINGS_URL;
+            
+            if (userData.role === 'admin') {
+                url = ALL_BORROWINGS_URL;
+            } else {
+                url = `${ALL_BORROWINGS_URL}?user_id=${userData.id}`;
+            }
+
+            const response = await axios.get(url, {
                 headers: {
                     Authorization: `Bearer ${token}`,
                     Accept: 'application/json'
                 }
             });
 
-            console.log("Borrowings API Response:", response.data); // Debug log
+            console.log("Borrowings API Response:", response.data);
 
             if (response.data && response.data.data) {
-                // Format data peminjaman dari API
                 const formattedBorrowings = response.data.data.map(borrowing => ({
                     id: borrowing.id,
-                    book_title: borrowing.book?.title || 'Judul tidak tersedia',
-                    book_author: borrowing.book?.author || 'Penulis tidak tersedia',
-                    borrow_date: borrowing.borrow_date || borrowing.created_at,
-                    return_date: borrowing.return_date,
+                    user_id: borrowing.user_id,
+                    book_id: borrowing.book_id,
+                    borrow_date: borrowing.borrowed_at || borrowing.created_at,
                     due_date: borrowing.due_date,
+                    return_date: borrowing.returned_at,
                     status: borrowing.status || 'dipinjam',
-                    // Tambahkan field lain sesuai kebutuhan
+                    
+                    user: borrowing.user ? {
+                        id: borrowing.user.id,
+                        name: borrowing.user.name,
+                        nis: borrowing.user.nis,
+                        email: borrowing.user.email,
+                        major: borrowing.user.major,
+                        grade: borrowing.user.grade,
+                        role: borrowing.user.role
+                    } : null,
+                    
+                    book: borrowing.book ? {
+                        id: borrowing.book.id,
+                        title: borrowing.book.title,
+                        author: borrowing.book.author,
+                        description: borrowing.book.description
+                    } : null
                 }));
 
                 setBorrowings(formattedBorrowings);
@@ -179,13 +216,12 @@ const Dashboard = () => {
                 setBorrowings([]);
             }
         } catch (error) {
-            console.error("Error fetching user borrowings:", error);
+            console.error("Error fetching borrowings:", error);
             setBorrowings([]);
-            // Tidak set error karena mungkin user belum pernah meminjam
         } finally {
             setIsLoadingBorrowings(false);
         }
-    }, [userData.role]);
+    }, [userData.role, userData.id]);
 
     // --- Logika Pengambilan Data Buku Asli ---
     const fetchBooks = useCallback(async () => {
@@ -195,10 +231,8 @@ const Dashboard = () => {
         try {
             const token = localStorage.getItem('userToken');
             
-            // Ambil data user terlebih dahulu
             await fetchUserData();
 
-            // Panggilan API untuk mendapatkan buku
             const response = await axios.get(BOOKS_API_URL, {
                 headers: {
                     Authorization: `Bearer ${token}`,
@@ -247,12 +281,12 @@ const Dashboard = () => {
         fetchBooks();
     }, [fetchBooks]);
 
-    // Panggil fetchUserBorrowings ketika userData berubah atau menu borrowing aktif
+    // Panggil fetchBorrowings ketika userData berubah atau menu borrowing aktif
     useEffect(() => {
         if (activeMenu === 'borrowing' && userData.role !== 'guest') {
-            fetchUserBorrowings();
+            fetchBorrowings();
         }
-    }, [activeMenu, userData.role, fetchUserBorrowings]);
+    }, [activeMenu, userData.role, fetchBorrowings]);
 
     // --- Logout Functionality ---
     const handleLogout = () => {
@@ -289,10 +323,191 @@ const Dashboard = () => {
     // --- Book Detail Handler ---
     const handleBookClick = (book) => {
         setSelectedBook(book);
+        setEditBookData({ ...book });
+        setIsEditing(false);
     };
 
     const handleCloseBookModal = () => {
         setSelectedBook(null);
+        setIsEditing(false);
+        setEditBookData({});
+    };
+
+    // --- User Detail Handler (untuk admin) ---
+    const handleUserClick = (user) => {
+        setSelectedUser(user);
+    };
+
+    const handleCloseUserModal = () => {
+        setSelectedUser(null);
+    };
+
+    // --- Edit Mode Handler ---
+    const handleDoubleClickEdit = () => {
+        if (userData.role === 'admin') {
+            setIsEditing(true);
+        }
+    };
+
+    const handleCancelEdit = () => {
+        setIsEditing(false);
+        setEditBookData(selectedBook ? { ...selectedBook } : {});
+    };
+
+    // --- Update Book Handler ---
+    const handleUpdateBook = async () => {
+        if (!selectedBook) return;
+
+        setIsSaving(true);
+        try {
+            const token = localStorage.getItem('userToken');
+            const response = await axios.put(
+                `${BOOKS_API_URL}/${selectedBook.id}`,
+                {
+                    title: editBookData.title,
+                    author: editBookData.author,
+                    description: editBookData.description,
+                    category_id: editBookData.category_id,
+                    stock: editBookData.stock,
+                    published_year: editBookData.published_year,
+                    isbn: editBookData.isbn
+                },
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        Accept: 'application/json'
+                    }
+                }
+            );
+
+            if (response.data.success) {
+                // Refresh data books
+                await fetchBooks();
+
+                setIsError("Buku berhasil diupdate!");
+                
+                // AUTO CLOSE MODAL
+                setSelectedBook(null);
+                setIsEditing(false);
+                setEditBookData({});
+                
+                setTimeout(() => {
+                    setIsError(null);
+                }, 2000);
+            } else {
+                setIsError(response.data.message || "Gagal mengupdate buku.");
+            }
+        } catch (error) {
+            console.error("Error updating book:", error);
+            if (error.response && error.response.data && error.response.data.message) {
+                setIsError(error.response.data.message);
+            } else {
+                setIsError("Terjadi kesalahan saat mengupdate buku.");
+            }
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    // --- Delete Book Handler ---
+    const handleDeleteBook = async () => {
+        if (!selectedBook) return;
+
+        if (!window.confirm(`Apakah Anda yakin ingin menghapus buku "${selectedBook.title}"?`)) {
+            return;
+        }
+
+        setIsSaving(true);
+        try {
+            const token = localStorage.getItem('userToken');
+            const response = await axios.delete(
+                `${BOOKS_API_URL}/${selectedBook.id}`,
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        Accept: 'application/json'
+                    }
+                }
+            );
+
+            if (response.data.success) {
+                // Refresh data books
+                await fetchBooks();
+                
+                setIsError("Buku berhasil dihapus!");
+                
+                // AUTO CLOSE MODAL
+                setSelectedBook(null);
+                setIsEditing(false);
+                setEditBookData({});
+                
+                setTimeout(() => {
+                    setIsError(null);
+                }, 2000);
+            } else {
+                setIsError(response.data.message || "Gagal menghapus buku.");
+            }
+        } catch (error) {
+            console.error("Error deleting book:", error);
+            if (error.response && error.response.data && error.response.data.message) {
+                setIsError(error.response.data.message);
+            } else {
+                setIsError("Terjadi kesalahan saat menghapus buku.");
+            }
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    // --- Create Book Handler ---
+    const handleCreateBook = async () => {
+        setIsSaving(true);
+        try {
+            const token = localStorage.getItem('userToken');
+            const response = await axios.post(
+                BOOKS_API_URL,
+                newBookData,
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        Accept: 'application/json'
+                    }
+                }
+            );
+
+            if (response.data.success) {
+                // Refresh data books
+                await fetchBooks();
+
+                // AUTO CLOSE MODAL
+                setShowCreateModal(false);
+                setNewBookData({
+                    title: '',
+                    author: '',
+                    description: '',
+                    category_id: 3,
+                    stock: 1,
+                    published_year: new Date().getFullYear(),
+                    isbn: ''
+                });
+
+                setIsError("Buku berhasil ditambahkan!");
+                setTimeout(() => {
+                    setIsError(null);
+                }, 2000);
+            } else {
+                setIsError(response.data.message || "Gagal menambahkan buku.");
+            }
+        } catch (error) {
+            console.error("Error creating book:", error);
+            if (error.response && error.response.data && error.response.data.message) {
+                setIsError(error.response.data.message);
+            } else {
+                setIsError("Terjadi kesalahan saat menambahkan buku.");
+            }
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     // --- Borrow Book Handler ---
@@ -301,6 +516,12 @@ const Dashboard = () => {
             setIsError("Anda harus login terlebih dahulu untuk meminjam buku.");
             setSelectedBook(null);
             navigate("/login");
+            return;
+        }
+
+        // Admin tidak bisa meminjam buku
+        if (userData.role === 'admin') {
+            setIsError("Admin tidak dapat meminjam buku.");
             return;
         }
 
@@ -322,28 +543,19 @@ const Dashboard = () => {
             );
 
             if (response.data.success) {
-                // Update stock buku di state
-                setBooks(prevBooks => 
-                    prevBooks.map(book => 
-                        book.id === bookId 
-                            ? { ...book, stock: book.stock - 1 }
-                            : book
-                    )
-                );
-                
-                // Update selected book stock
-                setSelectedBook(prev => 
-                    prev ? { ...prev, stock: prev.stock - 1 } : null
-                );
+                // Refresh data books untuk update stok
+                await fetchBooks();
 
-                // Refresh data peminjaman
                 if (activeMenu === 'borrowing') {
-                    await fetchUserBorrowings();
+                    await fetchBorrowings();
                 }
 
                 setIsError("Buku berhasil dipinjam!");
+                
+                // AUTO CLOSE MODAL
+                setSelectedBook(null);
+                
                 setTimeout(() => {
-                    setSelectedBook(null);
                     setIsError(null);
                 }, 2000);
             } else {
@@ -400,15 +612,15 @@ const Dashboard = () => {
     };
 
     // Format tanggal untuk ditampilkan
-    // const formatDate = (dateString) => {
-    //     if (!dateString) return '-';
-    //     const date = new Date(dateString);
-    //     return date.toLocaleDateString('id-ID', {
-    //         year: 'numeric',
-    //         month: 'long',
-    //         day: 'numeric'
-    //     });
-    // };
+    const formatDate = (dateString) => {
+        if (!dateString) return '-';
+        const date = new Date(dateString);
+        return date.toLocaleDateString('id-ID', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+    };
 
     // Helper untuk rendering konten berdasarkan menu yang aktif
     const renderContent = () => {
@@ -443,18 +655,31 @@ const Dashboard = () => {
                                 Semua Buku ({filteredBooks.length})
                             </h2>
                             
-                            {/* Search Bar untuk Books Page */}
-                            <div className="w-full lg:w-64">
-                                <div className="relative">
-                                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                                    <input
-                                        type="text"
-                                        placeholder="Cari judul atau penulis..."
-                                        value={searchQuery}
-                                        onChange={(e) => setSearchQuery(e.target.value)}
-                                        className="w-full pl-10 pr-4 py-2 rounded-full bg-gray-50 border border-gray-200 focus:border-amber-400 focus:bg-white transition-all outline-none text-sm"
-                                    />
+                            <div className="flex flex-col lg:flex-row gap-4">
+                                {/* Search Bar untuk Books Page */}
+                                <div className="w-full lg:w-64">
+                                    <div className="relative">
+                                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                        <input
+                                            type="text"
+                                            placeholder="Cari judul atau penulis..."
+                                            value={searchQuery}
+                                            onChange={(e) => setSearchQuery(e.target.value)}
+                                            className="w-full pl-10 pr-4 py-2 rounded-full bg-gray-50 border border-gray-200 focus:border-amber-400 focus:bg-white transition-all outline-none text-sm"
+                                        />
+                                    </div>
                                 </div>
+
+                                {/* Tombol Create untuk Admin */}
+                                {userData.role === 'admin' && (
+                                    <button
+                                        onClick={() => setShowCreateModal(true)}
+                                        className="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-full font-semibold hover:bg-green-600 transition-colors"
+                                    >
+                                        <Plus className="w-4 h-4" />
+                                        <span>Tambah Buku</span>
+                                    </button>
+                                )}
                             </div>
                         </div>
 
@@ -656,7 +881,6 @@ const Dashboard = () => {
                  );
             }
 
-            // Loading state untuk peminjaman
             if (isLoadingBorrowings) {
                 return (
                     <div className="text-center p-12 bg-white rounded-3xl shadow-xl">
@@ -670,10 +894,11 @@ const Dashboard = () => {
                 <div className="bg-white rounded-3xl shadow-xl p-6 lg:p-8">
                     <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6">
                         <h2 className="text-2xl lg:text-3xl font-bold mb-4 lg:mb-0" style={{ color: '#442D1C' }}>
-                            Riwayat Peminjaman {userData.name}
+                            {userData.role === 'admin' ? 'Semua Data Peminjaman' : `Riwayat Peminjaman ${userData.name}`}
                         </h2>
                         <div className="text-sm text-gray-500">
                             Total: {borrowings.length} peminjaman
+                            {userData.role === 'admin' && ' • Admin View'}
                         </div>
                     </div>
 
@@ -683,6 +908,9 @@ const Dashboard = () => {
                                 <thead>
                                     <tr style={{ borderBottom: '2px solid #E8D1A7' }}>
                                         <th className="text-left py-4 px-4 font-semibold text-sm" style={{ color: '#442D1C' }}>No</th>
+                                        {userData.role === 'admin' && (
+                                            <th className="text-left py-4 px-4 font-semibold text-sm" style={{ color: '#442D1C' }}>Peminjam</th>
+                                        )}
                                         <th className="text-left py-4 px-4 font-semibold text-sm" style={{ color: '#442D1C' }}>Judul Buku</th>
                                         <th className="text-left py-4 px-4 font-semibold text-sm" style={{ color: '#442D1C' }}>Penulis</th>
                                         <th className="text-left py-4 px-4 font-semibold text-sm" style={{ color: '#442D1C' }}>Tanggal Pinjam</th>
@@ -697,8 +925,38 @@ const Dashboard = () => {
                                         return (
                                             <tr key={borrowing.id} className="border-b hover:bg-orange-50 transition-colors">
                                                 <td className="py-4 px-4 text-sm">{index + 1}</td>
-                                                <td className="py-4 px-4 font-medium text-sm">{borrowing.book_title}</td>
-                                                <td className="py-4 px-4 text-sm">{borrowing.book_author}</td>
+                                                
+                                                {userData.role === 'admin' && (
+                                                    <td className="py-4 px-4">
+                                                        {borrowing.user ? (
+                                                            <div className="flex items-center gap-2">
+                                                                <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center font-semibold text-amber-700 text-sm">
+                                                                    {borrowing.user.name[0].toUpperCase()}
+                                                                </div>
+                                                                <div>
+                                                                    <p className="font-medium text-sm">{borrowing.user.name}</p>
+                                                                    <p className="text-xs text-gray-500">NIS: {borrowing.user.nis}</p>
+                                                                </div>
+                                                                <button
+                                                                    onClick={() => handleUserClick(borrowing.user)}
+                                                                    className="ml-2 p-1 hover:bg-gray-100 rounded transition-colors"
+                                                                    title="Lihat detail user"
+                                                                >
+                                                                    <Eye className="w-4 h-4 text-gray-500" />
+                                                                </button>
+                                                            </div>
+                                                        ) : (
+                                                            <span className="text-gray-400 text-sm">Data user tidak tersedia</span>
+                                                        )}
+                                                    </td>
+                                                )}
+
+                                                <td className="py-4 px-4 font-medium text-sm">
+                                                    {borrowing.book?.title || 'Judul tidak tersedia'}
+                                                </td>
+                                                <td className="py-4 px-4 text-sm">
+                                                    {borrowing.book?.author || 'Penulis tidak tersedia'}
+                                                </td>
                                                 <td className="py-4 px-4 text-sm">{formatDate(borrowing.borrow_date)}</td>
                                                 <td className="py-4 px-4 text-sm">{formatDate(borrowing.due_date)}</td>
                                                 <td className="py-4 px-4 text-sm">
@@ -718,35 +976,30 @@ const Dashboard = () => {
                     ) : (
                         <div className="text-center py-12">
                             <List className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                            <p className="text-gray-500 text-lg mb-2">Belum ada riwayat peminjaman</p>
-                            <p className="text-gray-400 text-sm">
-                                Silakan pinjam buku terlebih dahulu untuk melihat riwayat peminjaman Anda.
+                            <p className="text-gray-500 text-lg mb-2">
+                                {userData.role === 'admin' ? 'Belum ada data peminjaman' : 'Belum ada riwayat peminjaman'}
                             </p>
-                            <button
-                                onClick={() => setActiveMenu('books')}
-                                className="mt-4 px-6 py-2 bg-amber-500 text-white rounded-full font-semibold hover:bg-amber-600 transition-colors"
-                            >
-                                Pinjam Buku Sekarang
-                            </button>
+                            <p className="text-gray-400 text-sm">
+                                {userData.role === 'admin' 
+                                    ? 'Sistem akan menampilkan data peminjaman dari semua user di sini.'
+                                    : 'Silakan pinjam buku terlebih dahulu untuk melihat riwayat peminjaman Anda.'
+                                }
+                            </p>
+                            {userData.role === 'member' && (
+                                <button
+                                    onClick={() => setActiveMenu('books')}
+                                    className="mt-4 px-6 py-2 bg-amber-500 text-white rounded-full font-semibold hover:bg-amber-600 transition-colors"
+                                >
+                                    Pinjam Buku Sekarang
+                                </button>
+                            )}
                         </div>
                     )}
                 </div>
             );
         }
 
-        // Fallback
         return null;
-    };
-
-    // Format tanggal untuk ditampilkan
-    const formatDate = (dateString) => {
-        if (!dateString) return '-';
-        const date = new Date(dateString);
-        return date.toLocaleDateString('id-ID', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
-        });
     };
 
     return (
@@ -894,7 +1147,6 @@ const Dashboard = () => {
             {showProfileModal && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
                     <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
-                        {/* Header Modal */}
                         <div className="p-6 border-b border-gray-100">
                             <div className="flex items-center justify-between">
                                 <h2 className="text-2xl font-bold" style={{ color: '#442D1C' }}>Profil Saya</h2>
@@ -907,9 +1159,7 @@ const Dashboard = () => {
                             </div>
                         </div>
 
-                        {/* Content Modal */}
                         <div className="p-6">
-                            {/* Foto Profil */}
                             <div className="flex justify-center mb-6">
                                 <div className="w-24 h-24 rounded-full border-4 border-amber-300 flex items-center justify-center font-bold text-3xl"
                                     style={{ backgroundColor: '#FACC15', color: '#442D1C' }}>
@@ -917,7 +1167,6 @@ const Dashboard = () => {
                                 </div>
                             </div>
 
-                            {/* Informasi Profil */}
                             <div className="space-y-4">
                                 <div className="flex items-center gap-3 p-3 bg-orange-50 rounded-xl">
                                     <User className="w-5 h-5 text-amber-600" />
@@ -977,10 +1226,96 @@ const Dashboard = () => {
                             </div>
                         </div>
 
-                        {/* Footer Modal */}
                         <div className="p-6 border-t border-gray-100">
                             <button
                                 onClick={() => setShowProfileModal(false)}
+                                className="w-full py-3 px-6 bg-amber-500 text-white rounded-xl font-semibold hover:bg-amber-600 transition-colors"
+                            >
+                                Tutup
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal Detail User (untuk admin) */}
+            {selectedUser && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+                        <div className="p-6 border-b border-gray-100">
+                            <div className="flex items-center justify-between">
+                                <h2 className="text-2xl font-bold" style={{ color: '#442D1C' }}>Detail Peminjam</h2>
+                                <button 
+                                    onClick={handleCloseUserModal}
+                                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                                >
+                                    <X className="w-5 h-5 text-gray-500" />
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="p-6">
+                            <div className="flex justify-center mb-6">
+                                <div className="w-24 h-24 rounded-full border-4 border-amber-300 flex items-center justify-center font-bold text-3xl"
+                                    style={{ backgroundColor: '#FACC15', color: '#442D1C' }}>
+                                    {selectedUser.name[0].toUpperCase()}
+                                </div>
+                            </div>
+
+                            <div className="space-y-4">
+                                <div className="flex items-center gap-3 p-3 bg-orange-50 rounded-xl">
+                                    <User className="w-5 h-5 text-amber-600" />
+                                    <div>
+                                        <p className="text-sm text-gray-500">Nama Lengkap</p>
+                                        <p className="font-semibold" style={{ color: '#442D1C' }}>{selectedUser.name}</p>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center gap-3 p-3 bg-orange-50 rounded-xl">
+                                    <Mail className="w-5 h-5 text-amber-600" />
+                                    <div>
+                                        <p className="text-sm text-gray-500">Email</p>
+                                        <p className="font-semibold" style={{ color: '#442D1C' }}>{selectedUser.email || '-'}</p>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center gap-3 p-3 bg-orange-50 rounded-xl">
+                                    <IdCard className="w-5 h-5 text-amber-600" />
+                                    <div>
+                                        <p className="text-sm text-gray-500">NIS</p>
+                                        <p className="font-semibold" style={{ color: '#442D1C' }}>{selectedUser.nis || '-'}</p>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center gap-3 p-3 bg-orange-50 rounded-xl">
+                                    <School className="w-5 h-5 text-amber-600" />
+                                    <div>
+                                        <p className="text-sm text-gray-500">Jurusan</p>
+                                        <p className="font-semibold" style={{ color: '#442D1C' }}>{selectedUser.major || '-'}</p>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center gap-3 p-3 bg-orange-50 rounded-xl">
+                                    <GraduationCap className="w-5 h-5 text-amber-600" />
+                                    <div>
+                                        <p className="text-sm text-gray-500">Kelas</p>
+                                        <p className="font-semibold" style={{ color: '#442D1C' }}>{selectedUser.grade || '-'}</p>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center gap-3 p-3 bg-orange-50 rounded-xl">
+                                    <Users className="w-5 h-5 text-amber-600" />
+                                    <div>
+                                        <p className="text-sm text-gray-500">Role</p>
+                                        <p className="font-semibold capitalize" style={{ color: '#442D1C' }}>{selectedUser.role}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="p-6 border-t border-gray-100">
+                            <button
+                                onClick={handleCloseUserModal}
                                 className="w-full py-3 px-6 bg-amber-500 text-white rounded-xl font-semibold hover:bg-amber-600 transition-colors"
                             >
                                 Tutup
@@ -994,20 +1329,50 @@ const Dashboard = () => {
             {selectedBook && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
                     <div className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-                        {/* Header Modal */}
                         <div className="p-6 border-b border-gray-100">
                             <div className="flex items-center justify-between">
-                                <h2 className="text-2xl font-bold" style={{ color: '#442D1C' }}>Detail Buku</h2>
-                                <button 
-                                    onClick={handleCloseBookModal}
-                                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                                >
-                                    <X className="w-5 h-5 text-gray-500" />
-                                </button>
+                                <h2 className="text-2xl font-bold" style={{ color: '#442D1C' }}>
+                                    {isEditing ? 'Edit Buku' : 'Detail Buku'}
+                                </h2>
+                                <div className="flex items-center gap-2">
+                                    {/* Tombol Edit/Delete untuk Admin */}
+                                    {userData.role === 'admin' && !isEditing && (
+                                        <>
+                                            <button
+                                                onClick={handleDoubleClickEdit}
+                                                className="p-2 hover:bg-blue-50 rounded-lg transition-colors text-blue-600"
+                                                title="Edit buku"
+                                            >
+                                                <Edit className="w-5 h-5" />
+                                            </button>
+                                            <button
+                                                onClick={handleDeleteBook}
+                                                className="p-2 hover:bg-red-50 rounded-lg transition-colors text-red-600"
+                                                title="Hapus buku"
+                                            >
+                                                <Trash2 className="w-5 h-5" />
+                                            </button>
+                                        </>
+                                    )}
+                                    {isEditing && (
+                                        <button
+                                            onClick={handleCancelEdit}
+                                            className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-600"
+                                            title="Batal edit"
+                                        >
+                                            <RotateCcw className="w-5 h-5" />
+                                        </button>
+                                    )}
+                                    <button 
+                                        onClick={handleCloseBookModal}
+                                        className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                                    >
+                                        <X className="w-5 h-5 text-gray-500" />
+                                    </button>
+                                </div>
                             </div>
                         </div>
 
-                        {/* Content Modal */}
                         <div className="p-6">
                             <div className="flex flex-col lg:flex-row gap-6">
                                 {/* Cover Buku */}
@@ -1025,118 +1390,367 @@ const Dashboard = () => {
 
                                 {/* Informasi Buku */}
                                 <div className="flex-1">
-                                    <h3 className="text-2xl font-bold mb-2" style={{ color: '#442D1C' }}>{selectedBook.title}</h3>
-                                    <p className="text-gray-600 mb-4">oleh {selectedBook.author}</p>
-
-                                    {/* Deskripsi Buku */}
-                                    <div className="mb-6">
-                                        <h4 className="font-semibold mb-2" style={{ color: '#442D1C' }}>Deskripsi</h4>
-                                        <p className="text-gray-700 leading-relaxed">{selectedBook.description}</p>
-                                    </div>
-
-                                    {/* Informasi Detail */}
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                                        <div className="flex items-center gap-3">
-                                            <Hash className="w-4 h-4 text-amber-600" />
+                                    {isEditing ? (
+                                        // Form Edit
+                                        <div className="space-y-4">
                                             <div>
-                                                <p className="text-sm text-gray-500">Kategori</p>
-                                                <p className="font-semibold capitalize">{selectedBook.category}</p>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">Judul Buku</label>
+                                                <input
+                                                    type="text"
+                                                    value={editBookData.title || ''}
+                                                    onChange={(e) => setEditBookData({...editBookData, title: e.target.value})}
+                                                    className="w-full p-3 border border-gray-300 rounded-xl focus:border-amber-400 focus:ring-1 focus:ring-amber-400 outline-none"
+                                                />
                                             </div>
-                                        </div>
-
-                                        <div className="flex items-center gap-3">
-                                            <CalendarDays className="w-4 h-4 text-amber-600" />
                                             <div>
-                                                <p className="text-sm text-gray-500">Tahun Terbit</p>
-                                                <p className="font-semibold">{selectedBook.published_year || 'Tidak diketahui'}</p>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">Penulis</label>
+                                                <input
+                                                    type="text"
+                                                    value={editBookData.author || ''}
+                                                    onChange={(e) => setEditBookData({...editBookData, author: e.target.value})}
+                                                    className="w-full p-3 border border-gray-300 rounded-xl focus:border-amber-400 focus:ring-1 focus:ring-amber-400 outline-none"
+                                                />
                                             </div>
-                                        </div>
-
-                                        <div className="flex items-center gap-3">
-                                            <Book className="w-4 h-4 text-amber-600" />
                                             <div>
-                                                <p className="text-sm text-gray-500">ISBN</p>
-                                                <p className="font-semibold">{selectedBook.isbn || 'Tidak tersedia'}</p>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">Deskripsi</label>
+                                                <textarea
+                                                    value={editBookData.description || ''}
+                                                    onChange={(e) => setEditBookData({...editBookData, description: e.target.value})}
+                                                    rows="4"
+                                                    className="w-full p-3 border border-gray-300 rounded-xl focus:border-amber-400 focus:ring-1 focus:ring-amber-400 outline-none"
+                                                />
                                             </div>
-                                        </div>
-
-                                        <div className="flex items-center gap-3">
-                                            <Clock className="w-4 h-4 text-amber-600" />
-                                            <div>
-                                                <p className="text-sm text-gray-500">Ditambahkan</p>
-                                                <p className="font-semibold">{formatDate(selectedBook.created_at)}</p>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Status Stok */}
-                                    <div className={`flex items-center gap-3 p-4 rounded-xl mb-6 ${
-                                        selectedBook.stock > 0 
-                                            ? 'bg-green-50 border border-green-200' 
-                                            : 'bg-red-50 border border-red-200'
-                                    }`}>
-                                        {selectedBook.stock > 0 ? (
-                                            <>
-                                                <CheckCircle className="w-5 h-5 text-green-600" />
+                                            <div className="grid grid-cols-2 gap-4">
                                                 <div>
-                                                    <p className="font-semibold text-green-700">Tersedia</p>
-                                                    <p className="text-sm text-green-600">{selectedBook.stock} buku tersedia untuk dipinjam</p>
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Kategori</label>
+                                                    <select
+                                                        value={editBookData.category_id || 3}
+                                                        onChange={(e) => setEditBookData({...editBookData, category_id: parseInt(e.target.value)})}
+                                                        className="w-full p-3 border border-gray-300 rounded-xl focus:border-amber-400 focus:ring-1 focus:ring-amber-400 outline-none"
+                                                    >
+                                                        <option value={3}>Nonfiksi</option>
+                                                        <option value={4}>Fantasi</option>
+                                                        <option value={5}>Detektif</option>
+                                                        <option value={6}>Drama</option>
+                                                        <option value={2}>Psikologi</option>
+                                                    </select>
                                                 </div>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <AlertCircle className="w-5 h-5 text-red-600" />
                                                 <div>
-                                                    <p className="font-semibold text-red-700">Stok Habis</p>
-                                                    <p className="text-sm text-red-600">Buku sedang tidak tersedia untuk dipinjam</p>
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Stok</label>
+                                                    <input
+                                                        type="number"
+                                                        value={editBookData.stock || 0}
+                                                        onChange={(e) => setEditBookData({...editBookData, stock: parseInt(e.target.value)})}
+                                                        className="w-full p-3 border border-gray-300 rounded-xl focus:border-amber-400 focus:ring-1 focus:ring-amber-400 outline-none"
+                                                    />
                                                 </div>
-                                            </>
-                                        )}
-                                    </div>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Tahun Terbit</label>
+                                                    <input
+                                                        type="number"
+                                                        value={editBookData.published_year || ''}
+                                                        onChange={(e) => setEditBookData({...editBookData, published_year: parseInt(e.target.value)})}
+                                                        className="w-full p-3 border border-gray-300 rounded-xl focus:border-amber-400 focus:ring-1 focus:ring-amber-400 outline-none"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">ISBN</label>
+                                                    <input
+                                                        type="text"
+                                                        value={editBookData.isbn || ''}
+                                                        onChange={(e) => setEditBookData({...editBookData, isbn: e.target.value})}
+                                                        className="w-full p-3 border border-gray-300 rounded-xl focus:border-amber-400 focus:ring-1 focus:ring-amber-400 outline-none"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        // Tampilan Detail
+                                        <>
+                                            <h3 className="text-2xl font-bold mb-2" style={{ color: '#442D1C' }}>{selectedBook.title}</h3>
+                                            <p className="text-gray-600 mb-4">oleh {selectedBook.author}</p>
+
+                                            {/* Deskripsi Buku */}
+                                            <div className="mb-6" onDoubleClick={handleDoubleClickEdit}>
+                                                <h4 className="font-semibold mb-2" style={{ color: '#442D1C' }}>Deskripsi</h4>
+                                                <p className="text-gray-700 leading-relaxed">{selectedBook.description}</p>
+                                                {userData.role === 'admin' && (
+                                                    <p className="text-xs text-gray-400 mt-1">Double click untuk edit</p>
+                                                )}
+                                            </div>
+
+                                            {/* Informasi Detail */}
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                                                <div className="flex items-center gap-3">
+                                                    <Hash className="w-4 h-4 text-amber-600" />
+                                                    <div>
+                                                        <p className="text-sm text-gray-500">Kategori</p>
+                                                        <p className="font-semibold capitalize">{selectedBook.category}</p>
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex items-center gap-3">
+                                                    <CalendarDays className="w-4 h-4 text-amber-600" />
+                                                    <div>
+                                                        <p className="text-sm text-gray-500">Tahun Terbit</p>
+                                                        <p className="font-semibold">{selectedBook.published_year || 'Tidak diketahui'}</p>
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex items-center gap-3">
+                                                    <Book className="w-4 h-4 text-amber-600" />
+                                                    <div>
+                                                        <p className="text-sm text-gray-500">ISBN</p>
+                                                        <p className="font-semibold">{selectedBook.isbn || 'Tidak tersedia'}</p>
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex items-center gap-3">
+                                                    <Clock className="w-4 h-4 text-amber-600" />
+                                                    <div>
+                                                        <p className="text-sm text-gray-500">Ditambahkan</p>
+                                                        <p className="font-semibold">{formatDate(selectedBook.created_at)}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Status Stok */}
+                                            <div className={`flex items-center gap-3 p-4 rounded-xl mb-6 ${
+                                                selectedBook.stock > 0 
+                                                    ? 'bg-green-50 border border-green-200' 
+                                                    : 'bg-red-50 border border-red-200'
+                                            }`}>
+                                                {selectedBook.stock > 0 ? (
+                                                    <>
+                                                        <CheckCircle className="w-5 h-5 text-green-600" />
+                                                        <div>
+                                                            <p className="font-semibold text-green-700">Tersedia</p>
+                                                            <p className="text-sm text-green-600">{selectedBook.stock} buku tersedia untuk dipinjam</p>
+                                                        </div>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <AlertCircle className="w-5 h-5 text-red-600" />
+                                                        <div>
+                                                            <p className="font-semibold text-red-700">Stok Habis</p>
+                                                            <p className="text-sm text-red-600">Buku sedang tidak tersedia untuk dipinjam</p>
+                                                        </div>
+                                                    </>
+                                                )}
+                                            </div>
+                                        </>
+                                    )}
 
                                     {/* Tombol Aksi */}
                                     <div className="flex gap-3">
-                                        <button
-                                            onClick={handleCloseBookModal}
-                                            className="flex-1 py-3 px-6 border border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition-colors"
-                                        >
-                                            Tutup
-                                        </button>
-                                        
-                                        {userData.role !== 'guest' && (
-                                            <button
-                                                onClick={() => handleBorrowBook(selectedBook.id)}
-                                                disabled={selectedBook.stock === 0 || borrowLoading}
-                                                className={`flex-1 py-3 px-6 rounded-xl font-semibold transition-colors ${
-                                                    selectedBook.stock === 0
-                                                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                                                        : 'bg-amber-500 text-white hover:bg-amber-600'
-                                                }`}
-                                            >
-                                                {borrowLoading ? (
-                                                    <div className="flex items-center justify-center gap-2">
-                                                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-                                                        <span>Meminjam...</span>
-                                                    </div>
-                                                ) : (
-                                                    'Pinjam Buku'
+                                        {isEditing ? (
+                                            <>
+                                                <button
+                                                    onClick={handleCancelEdit}
+                                                    className="flex-1 py-3 px-6 border border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition-colors"
+                                                >
+                                                    Batal
+                                                </button>
+                                                <button
+                                                    onClick={handleUpdateBook}
+                                                    disabled={isSaving}
+                                                    className="flex-1 py-3 px-6 bg-green-500 text-white rounded-xl font-semibold hover:bg-green-600 transition-colors flex items-center justify-center gap-2"
+                                                >
+                                                    {isSaving ? (
+                                                        <>
+                                                            <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                                                            <span>Menyimpan...</span>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <Save className="w-4 h-4" />
+                                                            <span>Simpan</span>
+                                                        </>
+                                                    )}
+                                                </button>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <button
+                                                    onClick={handleCloseBookModal}
+                                                    className="flex-1 py-3 px-6 border border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition-colors"
+                                                >
+                                                    Tutup
+                                                </button>
+                                                
+                                                {userData.role === 'member' && (
+                                                    <button
+                                                        onClick={() => handleBorrowBook(selectedBook.id)}
+                                                        disabled={selectedBook.stock === 0 || borrowLoading}
+                                                        className={`flex-1 py-3 px-6 rounded-xl font-semibold transition-colors ${
+                                                            selectedBook.stock === 0
+                                                                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                                                : 'bg-amber-500 text-white hover:bg-amber-600'
+                                                        }`}
+                                                    >
+                                                        {borrowLoading ? (
+                                                            <div className="flex items-center justify-center gap-2">
+                                                                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                                                                <span>Meminjam...</span>
+                                                            </div>
+                                                        ) : (
+                                                            'Pinjam Buku'
+                                                        )}
+                                                    </button>
                                                 )}
-                                            </button>
-                                        )}
 
-                                        {userData.role === 'guest' && (
-                                            <button
-                                                onClick={() => {
-                                                    setSelectedBook(null);
-                                                    navigate("/login");
-                                                }}
-                                                className="flex-1 py-3 px-6 bg-amber-500 text-white rounded-xl font-semibold hover:bg-amber-600 transition-colors"
-                                            >
-                                                Login untuk Meminjam
-                                            </button>
+                                                {userData.role === 'guest' && (
+                                                    <button
+                                                        onClick={() => {
+                                                            setSelectedBook(null);
+                                                            navigate("/login");
+                                                        }}
+                                                        className="flex-1 py-3 px-6 bg-amber-500 text-white rounded-xl font-semibold hover:bg-amber-600 transition-colors"
+                                                    >
+                                                        Login untuk Meminjam
+                                                    </button>
+                                                )}
+
+                                                {userData.role === 'admin' && (
+                                                    <div className="text-center text-gray-500 py-2">
+                                                        Admin tidak dapat meminjam buku
+                                                    </div>
+                                                )}
+                                            </>
                                         )}
                                     </div>
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal Create Book */}
+            {showCreateModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                        <div className="p-6 border-b border-gray-100">
+                            <div className="flex items-center justify-between">
+                                <h2 className="text-2xl font-bold" style={{ color: '#442D1C' }}>Tambah Buku Baru</h2>
+                                <button 
+                                    onClick={() => setShowCreateModal(false)}
+                                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                                >
+                                    <X className="w-5 h-5 text-gray-500" />
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="p-6">
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Judul Buku *</label>
+                                    <input
+                                        type="text"
+                                        value={newBookData.title}
+                                        onChange={(e) => setNewBookData({...newBookData, title: e.target.value})}
+                                        className="w-full p-3 border border-gray-300 rounded-xl focus:border-amber-400 focus:ring-1 focus:ring-amber-400 outline-none"
+                                        placeholder="Masukkan judul buku"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Penulis *</label>
+                                    <input
+                                        type="text"
+                                        value={newBookData.author}
+                                        onChange={(e) => setNewBookData({...newBookData, author: e.target.value})}
+                                        className="w-full p-3 border border-gray-300 rounded-xl focus:border-amber-400 focus:ring-1 focus:ring-amber-400 outline-none"
+                                        placeholder="Masukkan nama penulis"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Deskripsi</label>
+                                    <textarea
+                                        value={newBookData.description}
+                                        onChange={(e) => setNewBookData({...newBookData, description: e.target.value})}
+                                        rows="4"
+                                        className="w-full p-3 border border-gray-300 rounded-xl focus:border-amber-400 focus:ring-1 focus:ring-amber-400 outline-none"
+                                        placeholder="Masukkan deskripsi buku"
+                                    />
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Kategori</label>
+                                        <select
+                                            value={newBookData.category_id}
+                                            onChange={(e) => setNewBookData({...newBookData, category_id: parseInt(e.target.value)})}
+                                            className="w-full p-3 border border-gray-300 rounded-xl focus:border-amber-400 focus:ring-1 focus:ring-amber-400 outline-none"
+                                        >
+                                            <option value={3}>Nonfiksi</option>
+                                            <option value={4}>Fantasi</option>
+                                            <option value={5}>Detektif</option>
+                                            <option value={6}>Drama</option>
+                                            <option value={2}>Psikologi</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Stok *</label>
+                                        <input
+                                            type="number"
+                                            value={newBookData.stock}
+                                            onChange={(e) => setNewBookData({...newBookData, stock: parseInt(e.target.value)})}
+                                            className="w-full p-3 border border-gray-300 rounded-xl focus:border-amber-400 focus:ring-1 focus:ring-amber-400 outline-none"
+                                            min="0"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Tahun Terbit</label>
+                                        <input
+                                            type="number"
+                                            value={newBookData.published_year}
+                                            onChange={(e) => setNewBookData({...newBookData, published_year: parseInt(e.target.value)})}
+                                            className="w-full p-3 border border-gray-300 rounded-xl focus:border-amber-400 focus:ring-1 focus:ring-amber-400 outline-none"
+                                            min="1900"
+                                            max={new Date().getFullYear()}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">ISBN</label>
+                                        <input
+                                            type="text"
+                                            value={newBookData.isbn}
+                                            onChange={(e) => setNewBookData({...newBookData, isbn: e.target.value})}
+                                            className="w-full p-3 border border-gray-300 rounded-xl focus:border-amber-400 focus:ring-1 focus:ring-amber-400 outline-none"
+                                            placeholder="Optional"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="flex gap-3 mt-6">
+                                <button
+                                    onClick={() => setShowCreateModal(false)}
+                                    className="flex-1 py-3 px-6 border border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition-colors"
+                                >
+                                    Batal
+                                </button>
+                                <button
+                                    onClick={handleCreateBook}
+                                    disabled={isSaving || !newBookData.title || !newBookData.author}
+                                    className="flex-1 py-3 px-6 bg-green-500 text-white rounded-xl font-semibold hover:bg-green-600 transition-colors flex items-center justify-center gap-2 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                                >
+                                    {isSaving ? (
+                                        <>
+                                            <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                                            <span>Menyimpan...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Save className="w-4 h-4" />
+                                            <span>Simpan Buku</span>
+                                        </>
+                                    )}
+                                </button>
                             </div>
                         </div>
                     </div>

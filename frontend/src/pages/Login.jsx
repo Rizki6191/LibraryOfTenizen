@@ -106,7 +106,7 @@ export default function Login() {
                                             <input 
                                                 type="text"
                                                 className="form-control" 
-                                                placeholder="Email atau NIS"
+                                                placeholder="Email"
                                                 name="email"
                                                 value={formData.email}
                                                 onChange={handleChange}

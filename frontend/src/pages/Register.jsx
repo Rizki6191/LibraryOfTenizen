@@ -270,7 +270,7 @@ export default function Register() {
                                             <div className="input-group">
                                                 <input
                                                     type={showPassword ? "text" : "password"}
-                                                    className="form-control"
+                                                    className="form-control"Fsear
                                                     id="password"
                                                     placeholder="Masukkan kata sandi"
                                                     name="password"
