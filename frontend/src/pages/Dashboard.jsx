@@ -7,7 +7,6 @@ import "../styles/dashboard.css";
 // ===============================================
 // API Configuration & Data Setup
 // ===============================================
-
 const API_BASE_URL = "http://127.0.0.1:8000/api";
 const BOOKS_API_URL = `${API_BASE_URL}/books`;
 const USER_PROFILE_URL = `${API_BASE_URL}/user`;
@@ -15,26 +14,60 @@ const BORROWING_API_URL = `${API_BASE_URL}/borrowing`;
 const ALL_BORROWINGS_URL = `${API_BASE_URL}/borrowing`;
 
 // --- Data Tambahan (Tetap) ---
+// Map category_id dari database ke slug/nama internal yang digunakan di aplikasi.
+// Mendukung baik number maupun string untuk antisipasi tipe data dari API.
 const categoryMap = {
-    2: 'psychology',
-    3: 'nonfiction', 
+    1: 'romance',
+    2: 'self-help',
+    3: 'biography',
     4: 'fantasy',
-    5: 'detective',
-    6: 'drama',    
-    7: 'drama',    
-    8: 'fantasy',
-    9: 'nonfiction'
+    5: 'science-fiction',
+    6: 'mystery',
+    7: 'thriller',
+    8: 'horror',
+    9: 'history',
+    10: 'business',
+    11: 'health-fitness',
+    12: 'children',
+    14: 'drama',
+    15: 'slice-of-life',
+    17: 'mystery',
+    // Versi string (untuk keamanan jika API kirim string)
+    '1': 'romance',
+    '2': 'self-help',
+    '3': 'biography',
+    '4': 'fantasy',
+    '5': 'science-fiction',
+    '6': 'mystery',
+    '7': 'thriller',
+    '8': 'horror',
+    '9': 'history',
+    '10': 'business',
+    '11': 'health-fitness',
+    '12': 'children',
+    '14': 'drama',
+    '15': 'slice-of-life',
+    '17': 'mystery'
 };
 
+// Daftar kategori yang ditampilkan di UI.
+// `id` harus sesuai dengan nilai yang dikembalikan oleh `categoryMap`.
 const categories = [
     { id: 'all', name: 'Semua', icon: BookOpen },
+    { id: 'romance', name: 'Romansa', icon: Heart },
+    { id: 'self-help', name: 'Self-Help', icon: GraduationCap },
+    { id: 'biography', name: 'Biografi', icon: Users },
     { id: 'fantasy', name: 'Fantasi', icon: Book },
-    { id: 'drama', name: 'Drama', icon: Heart },
-    { id: 'detective', name: 'Detektif', icon: Search },
-    { id: 'education', name: 'Edukasi', icon: GraduationCap },
-    { id: 'psychology', name: 'Psikologi', icon: Users },
+    { id: 'science-fiction', name: 'Fiksi Ilmiah', icon: Search },
+    { id: 'mystery', name: 'Misteri', icon: AlertCircle },
+    { id: 'thriller', name: 'Thriller', icon: TrendingUp },
+    { id: 'horror', name: 'Horor', icon: AlertCircle },
+    { id: 'history', name: 'Sejarah', icon: BookOpen },
     { id: 'business', name: 'Bisnis', icon: TrendingUp },
-    { id: 'nonfiction', name: 'Nonfiksi', icon: BookOpen }
+    { id: 'health-fitness', name: 'Kesehatan & Kebugaran', icon: Users },
+    { id: 'children', name: 'Anak-Anak', icon: Book },
+    { id: 'drama', name: 'Drama', icon: Heart },
+    { id: 'slice-of-life', name: 'Slice of Life', icon: BookOpen },
 ];
 
 const allMenuItems = [
@@ -57,7 +90,6 @@ const getBookCoverStyle = (id) => {
 
 const Dashboard = () => {
     const navigate = useNavigate();
-    
     // State untuk UI/Navigasi
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [activeMenu, setActiveMenu] = useState('books');
@@ -75,12 +107,11 @@ const Dashboard = () => {
         title: '',
         author: '',
         description: '',
-        category_id: 3,
+        category_id: 1,
         stock: 1,
         published_year: new Date().getFullYear(),
         isbn: ''
     });
-
     // State untuk Data
     const [books, setBooks] = useState([]);
     const [borrowings, setBorrowings] = useState([]);
@@ -88,7 +119,6 @@ const Dashboard = () => {
     const [isLoadingBorrowings, setIsLoadingBorrowings] = useState(false);
     const [isError, setIsError] = useState(null);
     const [isSaving, setIsSaving] = useState(false);
-    
     // State user data yang akan diisi dari API
     const [userData, setUserData] = useState({ 
         name: 'Loading...', 
@@ -106,7 +136,6 @@ const Dashboard = () => {
     // Fungsi untuk mendapatkan data user dari token
     const fetchUserData = useCallback(async () => {
         const token = localStorage.getItem('userToken');
-        
         if (!token) {
             setUserData({ 
                 name: 'Tamu', 
@@ -120,7 +149,6 @@ const Dashboard = () => {
             });
             return;
         }
-
         try {
             const response = await axios.get(USER_PROFILE_URL, {
                 headers: {
@@ -128,7 +156,6 @@ const Dashboard = () => {
                     Accept: 'application/json'
                 }
             });
-
             if (response.data && response.data.data) {
                 const user = response.data.data;
                 setUserData({
@@ -158,31 +185,25 @@ const Dashboard = () => {
     // Fungsi untuk mengambil data peminjaman
     const fetchBorrowings = useCallback(async () => {
         const token = localStorage.getItem('userToken');
-        
         if (!token || (userData.role === 'guest' && userData.role !== 'admin')) {
             setBorrowings([]);
             return;
         }
-
         setIsLoadingBorrowings(true);
         try {
             let url = ALL_BORROWINGS_URL;
-            
             if (userData.role === 'admin') {
                 url = ALL_BORROWINGS_URL;
             } else {
                 url = `${ALL_BORROWINGS_URL}?user_id=${userData.id}`;
             }
-
             const response = await axios.get(url, {
                 headers: {
                     Authorization: `Bearer ${token}`,
                     Accept: 'application/json'
                 }
             });
-
             console.log("Borrowings API Response:", response.data);
-
             if (response.data && response.data.data) {
                 const formattedBorrowings = response.data.data.map(borrowing => ({
                     id: borrowing.id,
@@ -192,7 +213,6 @@ const Dashboard = () => {
                     due_date: borrowing.due_date,
                     return_date: borrowing.returned_at,
                     status: borrowing.status || 'dipinjam',
-                    
                     user: borrowing.user ? {
                         id: borrowing.user.id,
                         name: borrowing.user.name,
@@ -202,7 +222,6 @@ const Dashboard = () => {
                         grade: borrowing.user.grade,
                         role: borrowing.user.role
                     } : null,
-                    
                     book: borrowing.book ? {
                         id: borrowing.book.id,
                         title: borrowing.book.title,
@@ -210,7 +229,6 @@ const Dashboard = () => {
                         description: borrowing.book.description
                     } : null
                 }));
-
                 setBorrowings(formattedBorrowings);
             } else {
                 setBorrowings([]);
@@ -227,31 +245,25 @@ const Dashboard = () => {
     const fetchBooks = useCallback(async () => {
         setIsLoading(true);
         setIsError(null);
-
         try {
             const token = localStorage.getItem('userToken');
-            
             await fetchUserData();
-
             const response = await axios.get(BOOKS_API_URL, {
                 headers: {
                     Authorization: `Bearer ${token}`,
                     Accept: 'application/json'
                 }
             });
-
             console.log("Books API Response:", response.data);
-
             if (response.data && response.data.data) { 
                 const apiBooks = response.data.data;
-                
                 const processedBooks = apiBooks.map((book, index) => ({
                     id: book.id,
                     title: book.title, 
                     author: book.author,
                     description: book.description || `Buku ${book.title} karya ${book.author}`,
                     cover: getBookCoverStyle(book.id), 
-                    category: categoryMap[book.category_id] || 'nonfiction', 
+                    category: categoryMap[book.category_id] || 'unknown', // ✅ Gunakan categoryMap yang baru
                     featured: index < 3,
                     stock: book.stock || 0,
                     category_id: book.category_id,
@@ -261,12 +273,10 @@ const Dashboard = () => {
                     updated_at: book.updated_at,
                     cover_image: book.cover_image
                 }));
-
                 setBooks(processedBooks);
             } else {
                 setIsError("Gagal mengambil data buku dari API. Format data tidak sesuai.");
             }
-
         } catch (error) {
             console.error("Error fetching books:", error);
             setIsError(`Terjadi kesalahan saat memuat data: ${error.message}. Pastikan API server berjalan di ${API_BASE_URL}.`);
@@ -357,7 +367,6 @@ const Dashboard = () => {
     // --- Update Book Handler ---
     const handleUpdateBook = async () => {
         if (!selectedBook) return;
-
         setIsSaving(true);
         try {
             const token = localStorage.getItem('userToken');
@@ -379,18 +388,14 @@ const Dashboard = () => {
                     }
                 }
             );
-
             if (response.data.success) {
                 // Refresh data books
                 await fetchBooks();
-
                 setIsError("Buku berhasil diupdate!");
-                
                 // AUTO CLOSE MODAL
                 setSelectedBook(null);
                 setIsEditing(false);
                 setEditBookData({});
-                
                 setTimeout(() => {
                     setIsError(null);
                 }, 2000);
@@ -412,11 +417,9 @@ const Dashboard = () => {
     // --- Delete Book Handler ---
     const handleDeleteBook = async () => {
         if (!selectedBook) return;
-
         if (!window.confirm(`Apakah Anda yakin ingin menghapus buku "${selectedBook.title}"?`)) {
             return;
         }
-
         setIsSaving(true);
         try {
             const token = localStorage.getItem('userToken');
@@ -429,18 +432,14 @@ const Dashboard = () => {
                     }
                 }
             );
-
             if (response.data.success) {
                 // Refresh data books
                 await fetchBooks();
-                
                 setIsError("Buku berhasil dihapus!");
-                
                 // AUTO CLOSE MODAL
                 setSelectedBook(null);
                 setIsEditing(false);
                 setEditBookData({});
-                
                 setTimeout(() => {
                     setIsError(null);
                 }, 2000);
@@ -474,11 +473,9 @@ const Dashboard = () => {
                     }
                 }
             );
-
             if (response.data.success) {
                 // Refresh data books
                 await fetchBooks();
-
                 // AUTO CLOSE MODAL
                 setShowCreateModal(false);
                 setNewBookData({
@@ -490,7 +487,6 @@ const Dashboard = () => {
                     published_year: new Date().getFullYear(),
                     isbn: ''
                 });
-
                 setIsError("Buku berhasil ditambahkan!");
                 setTimeout(() => {
                     setIsError(null);
@@ -518,13 +514,11 @@ const Dashboard = () => {
             navigate("/login");
             return;
         }
-
         // Admin tidak bisa meminjam buku
         if (userData.role === 'admin') {
             setIsError("Admin tidak dapat meminjam buku.");
             return;
         }
-
         setBorrowLoading(true);
         try {
             const token = localStorage.getItem('userToken');
@@ -541,20 +535,15 @@ const Dashboard = () => {
                     }
                 }
             );
-
             if (response.data.success) {
                 // Refresh data books untuk update stok
                 await fetchBooks();
-
                 if (activeMenu === 'borrowing') {
                     await fetchBorrowings();
                 }
-
                 setIsError("Buku berhasil dipinjam!");
-                
                 // AUTO CLOSE MODAL
                 setSelectedBook(null);
-                
                 setTimeout(() => {
                     setIsError(null);
                 }, 2000);
@@ -587,7 +576,6 @@ const Dashboard = () => {
         const today = new Date();
         const dueDate = new Date(borrowing.due_date);
         const returnDate = borrowing.return_date ? new Date(borrowing.return_date) : null;
-
         if (returnDate) {
             return {
                 text: 'Dikembalikan',
@@ -595,7 +583,6 @@ const Dashboard = () => {
                 icon: '✅'
             };
         }
-
         if (today > dueDate) {
             return {
                 text: 'Terlambat',
@@ -603,7 +590,6 @@ const Dashboard = () => {
                 icon: '⚠️'
             };
         }
-
         return {
             text: 'Dipinjam',
             class: 'bg-green-100 text-green-700',
@@ -648,13 +634,11 @@ const Dashboard = () => {
                             <p>{isError.includes("berhasil") ? "✅" : "⚠️"} {isError}</p>
                         </div>
                     )}
-
                     <div className="bg-white rounded-3xl shadow-xl p-6 lg:p-8">
                         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6">
                             <h2 className="text-2xl lg:text-3xl font-bold mb-4 lg:mb-0" style={{ color: '#442D1C' }}>
                                 Semua Buku ({filteredBooks.length})
                             </h2>
-                            
                             <div className="flex flex-col lg:flex-row gap-4">
                                 {/* Search Bar untuk Books Page */}
                                 <div className="w-full lg:w-64">
@@ -669,7 +653,6 @@ const Dashboard = () => {
                                         />
                                     </div>
                                 </div>
-
                                 {/* Tombol Create untuk Admin */}
                                 {userData.role === 'admin' && (
                                     <button
@@ -682,7 +665,6 @@ const Dashboard = () => {
                                 )}
                             </div>
                         </div>
-
                         {/* Categories Filter */}
                         <div className="mb-6">
                             <div className="flex gap-2 overflow-x-auto pb-4" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
@@ -703,7 +685,6 @@ const Dashboard = () => {
                                 ))}
                             </div>
                         </div>
-
                         {/* Books Grid */}
                         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 lg:gap-6">
                             {filteredBooks.length > 0 ? (
@@ -742,12 +723,11 @@ const Dashboard = () => {
                 </>
             );
         }
-        
+
         // --- Tampilan Beranda (Home) ---
         if (activeMenu === 'home') {
             const featuredBooks = books.filter(b => b.featured).slice(0, 4); 
             const interestingBooks = books.filter(b => !b.featured);
-
             return (
                 <>
                     {/* Pesan Error/Peringatan */}
@@ -760,7 +740,6 @@ const Dashboard = () => {
                             <p>{isError.includes("berhasil") ? "✅" : "⚠️"} {isError}</p>
                         </div>
                     )}
-
                     {/* Categories */}
                     <div className="mb-8">
                         <div className="flex gap-3 overflow-x-auto pb-4" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
@@ -781,7 +760,6 @@ const Dashboard = () => {
                             ))}
                         </div>
                     </div>
-
                     {/* Hero Section */}
                     <div className="bg-white rounded-3xl shadow-xl p-6 lg:p-8 mb-8 relative overflow-hidden">
                         <div className="absolute top-0 right-0 w-64 h-64 rounded-full blur-3xl opacity-30" style={{ background: 'linear-gradient(135deg, #fde68a, #fed7aa)' }}></div>
@@ -803,7 +781,6 @@ const Dashboard = () => {
                             </button>
                         </div>
                     </div>
-
                     {/* Featured Books */}
                     <h3 className="text-xl font-semibold mb-4" style={{ color: '#442D1C' }}>Pilihan Unggulan ({featuredBooks.length})</h3>
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 lg:gap-6 mb-8">
@@ -832,7 +809,6 @@ const Dashboard = () => {
                             </div>
                         )}
                     </div>
-
                     {/* Can Be Interesting Section */}
                     <div className="bg-white rounded-3xl shadow-xl p-6 lg:p-8">
                         <h3 className="text-2xl lg:text-3xl font-bold mb-4 lg:mb-6 leading-tight" style={{ color: '#442D1C' }}>
@@ -880,7 +856,6 @@ const Dashboard = () => {
                      </div>
                  );
             }
-
             if (isLoadingBorrowings) {
                 return (
                     <div className="text-center p-12 bg-white rounded-3xl shadow-xl">
@@ -889,7 +864,6 @@ const Dashboard = () => {
                     </div>
                 );
             }
-
             return (
                 <div className="bg-white rounded-3xl shadow-xl p-6 lg:p-8">
                     <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6">
@@ -901,7 +875,6 @@ const Dashboard = () => {
                             {userData.role === 'admin' && ' • Admin View'}
                         </div>
                     </div>
-
                     {borrowings.length > 0 ? (
                         <div className="overflow-x-auto">
                             <table className="w-full">
@@ -925,7 +898,6 @@ const Dashboard = () => {
                                         return (
                                             <tr key={borrowing.id} className="border-b hover:bg-orange-50 transition-colors">
                                                 <td className="py-4 px-4 text-sm">{index + 1}</td>
-                                                
                                                 {userData.role === 'admin' && (
                                                     <td className="py-4 px-4">
                                                         {borrowing.user ? (
@@ -950,7 +922,6 @@ const Dashboard = () => {
                                                         )}
                                                     </td>
                                                 )}
-
                                                 <td className="py-4 px-4 font-medium text-sm">
                                                     {borrowing.book?.title || 'Judul tidak tersedia'}
                                                 </td>
@@ -998,7 +969,6 @@ const Dashboard = () => {
                 </div>
             );
         }
-
         return null;
     };
 
@@ -1027,7 +997,6 @@ const Dashboard = () => {
                                 <X className="w-6 h-6" style={{ color: '#442D1C' }} />
                             </button>
                         </div>
-
                         <nav className="space-y-2">
                             {menuItems.map(item => (
                                 <button
@@ -1049,7 +1018,6 @@ const Dashboard = () => {
                             ))}
                         </nav>
                     </div>
-
                     <div className="mt-auto p-6">
                         <button 
                             onClick={handleLogout}
@@ -1082,7 +1050,6 @@ const Dashboard = () => {
                         >
                             <Menu className="w-6 h-6" style={{ color: '#442D1C' }} />
                         </button>
-
                         {/* Search Bar */}
                         <div className="flex-1 max-w-2xl">
                             <div className="relative">
@@ -1096,7 +1063,6 @@ const Dashboard = () => {
                                 />
                             </div>
                         </div>
-
                         {/* User Profile dengan Dropdown */}
                         <div className="relative">
                             <div 
@@ -1113,7 +1079,6 @@ const Dashboard = () => {
                                     <p className="text-xs text-gray-500 capitalize">{userData.role}</p>
                                 </div>
                             </div>
-
                             {/* Dropdown Menu */}
                             {profileDropdownOpen && (
                                 <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-2xl border border-gray-100 py-2 z-50">
@@ -1158,7 +1123,6 @@ const Dashboard = () => {
                                 </button>
                             </div>
                         </div>
-
                         <div className="p-6">
                             <div className="flex justify-center mb-6">
                                 <div className="w-24 h-24 rounded-full border-4 border-amber-300 flex items-center justify-center font-bold text-3xl"
@@ -1166,7 +1130,6 @@ const Dashboard = () => {
                                     {userData.name[0].toUpperCase()}
                                 </div>
                             </div>
-
                             <div className="space-y-4">
                                 <div className="flex items-center gap-3 p-3 bg-orange-50 rounded-xl">
                                     <User className="w-5 h-5 text-amber-600" />
@@ -1175,7 +1138,6 @@ const Dashboard = () => {
                                         <p className="font-semibold" style={{ color: '#442D1C' }}>{userData.name}</p>
                                     </div>
                                 </div>
-
                                 <div className="flex items-center gap-3 p-3 bg-orange-50 rounded-xl">
                                     <Mail className="w-5 h-5 text-amber-600" />
                                     <div>
@@ -1183,7 +1145,6 @@ const Dashboard = () => {
                                         <p className="font-semibold" style={{ color: '#442D1C' }}>{userData.email || '-'}</p>
                                     </div>
                                 </div>
-
                                 <div className="flex items-center gap-3 p-3 bg-orange-50 rounded-xl">
                                     <IdCard className="w-5 h-5 text-amber-600" />
                                     <div>
@@ -1191,7 +1152,6 @@ const Dashboard = () => {
                                         <p className="font-semibold" style={{ color: '#442D1C' }}>{userData.nis || '-'}</p>
                                     </div>
                                 </div>
-
                                 <div className="flex items-center gap-3 p-3 bg-orange-50 rounded-xl">
                                     <School className="w-5 h-5 text-amber-600" />
                                     <div>
@@ -1199,7 +1159,6 @@ const Dashboard = () => {
                                         <p className="font-semibold" style={{ color: '#442D1C' }}>{userData.major || '-'}</p>
                                     </div>
                                 </div>
-
                                 <div className="flex items-center gap-3 p-3 bg-orange-50 rounded-xl">
                                     <GraduationCap className="w-5 h-5 text-amber-600" />
                                     <div>
@@ -1207,7 +1166,6 @@ const Dashboard = () => {
                                         <p className="font-semibold" style={{ color: '#442D1C' }}>{userData.grade || '-'}</p>
                                     </div>
                                 </div>
-
                                 <div className="flex items-center gap-3 p-3 bg-orange-50 rounded-xl">
                                     <Calendar className="w-5 h-5 text-amber-600" />
                                     <div>
@@ -1215,7 +1173,6 @@ const Dashboard = () => {
                                         <p className="font-semibold" style={{ color: '#442D1C' }}>{formatDate(userData.created_at)}</p>
                                     </div>
                                 </div>
-
                                 <div className="flex items-center gap-3 p-3 bg-orange-50 rounded-xl">
                                     <Users className="w-5 h-5 text-amber-600" />
                                     <div>
@@ -1225,7 +1182,6 @@ const Dashboard = () => {
                                 </div>
                             </div>
                         </div>
-
                         <div className="p-6 border-t border-gray-100">
                             <button
                                 onClick={() => setShowProfileModal(false)}
@@ -1253,7 +1209,6 @@ const Dashboard = () => {
                                 </button>
                             </div>
                         </div>
-
                         <div className="p-6">
                             <div className="flex justify-center mb-6">
                                 <div className="w-24 h-24 rounded-full border-4 border-amber-300 flex items-center justify-center font-bold text-3xl"
@@ -1261,7 +1216,6 @@ const Dashboard = () => {
                                     {selectedUser.name[0].toUpperCase()}
                                 </div>
                             </div>
-
                             <div className="space-y-4">
                                 <div className="flex items-center gap-3 p-3 bg-orange-50 rounded-xl">
                                     <User className="w-5 h-5 text-amber-600" />
@@ -1270,7 +1224,6 @@ const Dashboard = () => {
                                         <p className="font-semibold" style={{ color: '#442D1C' }}>{selectedUser.name}</p>
                                     </div>
                                 </div>
-
                                 <div className="flex items-center gap-3 p-3 bg-orange-50 rounded-xl">
                                     <Mail className="w-5 h-5 text-amber-600" />
                                     <div>
@@ -1278,7 +1231,6 @@ const Dashboard = () => {
                                         <p className="font-semibold" style={{ color: '#442D1C' }}>{selectedUser.email || '-'}</p>
                                     </div>
                                 </div>
-
                                 <div className="flex items-center gap-3 p-3 bg-orange-50 rounded-xl">
                                     <IdCard className="w-5 h-5 text-amber-600" />
                                     <div>
@@ -1286,7 +1238,6 @@ const Dashboard = () => {
                                         <p className="font-semibold" style={{ color: '#442D1C' }}>{selectedUser.nis || '-'}</p>
                                     </div>
                                 </div>
-
                                 <div className="flex items-center gap-3 p-3 bg-orange-50 rounded-xl">
                                     <School className="w-5 h-5 text-amber-600" />
                                     <div>
@@ -1294,7 +1245,6 @@ const Dashboard = () => {
                                         <p className="font-semibold" style={{ color: '#442D1C' }}>{selectedUser.major || '-'}</p>
                                     </div>
                                 </div>
-
                                 <div className="flex items-center gap-3 p-3 bg-orange-50 rounded-xl">
                                     <GraduationCap className="w-5 h-5 text-amber-600" />
                                     <div>
@@ -1302,7 +1252,6 @@ const Dashboard = () => {
                                         <p className="font-semibold" style={{ color: '#442D1C' }}>{selectedUser.grade || '-'}</p>
                                     </div>
                                 </div>
-
                                 <div className="flex items-center gap-3 p-3 bg-orange-50 rounded-xl">
                                     <Users className="w-5 h-5 text-amber-600" />
                                     <div>
@@ -1312,7 +1261,6 @@ const Dashboard = () => {
                                 </div>
                             </div>
                         </div>
-
                         <div className="p-6 border-t border-gray-100">
                             <button
                                 onClick={handleCloseUserModal}
@@ -1372,7 +1320,6 @@ const Dashboard = () => {
                                 </div>
                             </div>
                         </div>
-
                         <div className="p-6">
                             <div className="flex flex-col lg:flex-row gap-6">
                                 {/* Cover Buku */}
@@ -1387,7 +1334,6 @@ const Dashboard = () => {
                                         </div>
                                     </div>
                                 </div>
-
                                 {/* Informasi Buku */}
                                 <div className="flex-1">
                                     {isEditing ? (
@@ -1428,11 +1374,11 @@ const Dashboard = () => {
                                                         onChange={(e) => setEditBookData({...editBookData, category_id: parseInt(e.target.value)})}
                                                         className="w-full p-3 border border-gray-300 rounded-xl focus:border-amber-400 focus:ring-1 focus:ring-amber-400 outline-none"
                                                     >
-                                                        <option value={3}>Nonfiksi</option>
-                                                        <option value={4}>Fantasi</option>
-                                                        <option value={5}>Detektif</option>
-                                                        <option value={6}>Drama</option>
-                                                        <option value={2}>Psikologi</option>
+                                                        {categories.filter(cat => cat.id !== 'all').map(cat => (
+                                                            <option key={cat.id} value={cat.id}>
+                                                                {cat.name}
+                                                            </option>
+                                                        ))}
                                                     </select>
                                                 </div>
                                                 <div>
@@ -1471,7 +1417,6 @@ const Dashboard = () => {
                                         <>
                                             <h3 className="text-2xl font-bold mb-2" style={{ color: '#442D1C' }}>{selectedBook.title}</h3>
                                             <p className="text-gray-600 mb-4">oleh {selectedBook.author}</p>
-
                                             {/* Deskripsi Buku */}
                                             <div className="mb-6" onDoubleClick={handleDoubleClickEdit}>
                                                 <h4 className="font-semibold mb-2" style={{ color: '#442D1C' }}>Deskripsi</h4>
@@ -1480,7 +1425,6 @@ const Dashboard = () => {
                                                     <p className="text-xs text-gray-400 mt-1">Double click untuk edit</p>
                                                 )}
                                             </div>
-
                                             {/* Informasi Detail */}
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                                                 <div className="flex items-center gap-3">
@@ -1490,7 +1434,6 @@ const Dashboard = () => {
                                                         <p className="font-semibold capitalize">{selectedBook.category}</p>
                                                     </div>
                                                 </div>
-
                                                 <div className="flex items-center gap-3">
                                                     <CalendarDays className="w-4 h-4 text-amber-600" />
                                                     <div>
@@ -1498,7 +1441,6 @@ const Dashboard = () => {
                                                         <p className="font-semibold">{selectedBook.published_year || 'Tidak diketahui'}</p>
                                                     </div>
                                                 </div>
-
                                                 <div className="flex items-center gap-3">
                                                     <Book className="w-4 h-4 text-amber-600" />
                                                     <div>
@@ -1506,7 +1448,6 @@ const Dashboard = () => {
                                                         <p className="font-semibold">{selectedBook.isbn || 'Tidak tersedia'}</p>
                                                     </div>
                                                 </div>
-
                                                 <div className="flex items-center gap-3">
                                                     <Clock className="w-4 h-4 text-amber-600" />
                                                     <div>
@@ -1515,7 +1456,6 @@ const Dashboard = () => {
                                                     </div>
                                                 </div>
                                             </div>
-
                                             {/* Status Stok */}
                                             <div className={`flex items-center gap-3 p-4 rounded-xl mb-6 ${
                                                 selectedBook.stock > 0 
@@ -1542,7 +1482,6 @@ const Dashboard = () => {
                                             </div>
                                         </>
                                     )}
-
                                     {/* Tombol Aksi */}
                                     <div className="flex gap-3">
                                         {isEditing ? (
@@ -1579,7 +1518,6 @@ const Dashboard = () => {
                                                 >
                                                     Tutup
                                                 </button>
-                                                
                                                 {userData.role === 'member' && (
                                                     <button
                                                         onClick={() => handleBorrowBook(selectedBook.id)}
@@ -1600,7 +1538,6 @@ const Dashboard = () => {
                                                         )}
                                                     </button>
                                                 )}
-
                                                 {userData.role === 'guest' && (
                                                     <button
                                                         onClick={() => {
@@ -1612,7 +1549,6 @@ const Dashboard = () => {
                                                         Login untuk Meminjam
                                                     </button>
                                                 )}
-
                                                 {userData.role === 'admin' && (
                                                     <div className="text-center text-gray-500 py-2">
                                                         Admin tidak dapat meminjam buku
@@ -1643,7 +1579,6 @@ const Dashboard = () => {
                                 </button>
                             </div>
                         </div>
-
                         <div className="p-6">
                             <div className="space-y-4">
                                 <div>
@@ -1684,11 +1619,11 @@ const Dashboard = () => {
                                             onChange={(e) => setNewBookData({...newBookData, category_id: parseInt(e.target.value)})}
                                             className="w-full p-3 border border-gray-300 rounded-xl focus:border-amber-400 focus:ring-1 focus:ring-amber-400 outline-none"
                                         >
-                                            <option value={3}>Nonfiksi</option>
-                                            <option value={4}>Fantasi</option>
-                                            <option value={5}>Detektif</option>
-                                            <option value={6}>Drama</option>
-                                            <option value={2}>Psikologi</option>
+                                            {categories.filter(cat => cat.id !== 'all').map(cat => (
+                                                <option key={cat.id} value={cat.id}>
+                                                    {cat.name}
+                                                </option>
+                                            ))}
                                         </select>
                                     </div>
                                     <div>
@@ -1726,7 +1661,6 @@ const Dashboard = () => {
                                     </div>
                                 </div>
                             </div>
-
                             <div className="flex gap-3 mt-6">
                                 <button
                                     onClick={() => setShowCreateModal(false)}
