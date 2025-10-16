@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { Link, useNavigate } from "react-router-dom";
-import { Home, Book, List, LogOut, Menu, X, Search, BookOpen, GraduationCap, Heart, TrendingUp, Users, User, Mail, School, IdCard, Calendar } from 'lucide-react';
+import { Home, Book, List, LogOut, Menu, X, Search, BookOpen, GraduationCap, Heart, TrendingUp, Users, User, Mail, School, IdCard, Calendar, Clock, Hash, CalendarDays, AlertCircle, CheckCircle } from 'lucide-react';
 import "../styles/dashboard.css";
 
 // ===============================================
@@ -12,7 +12,6 @@ const API_BASE_URL = "http://127.0.0.1:8000/api";
 const BOOKS_API_URL = `${API_BASE_URL}/books`;
 const USER_PROFILE_URL = `${API_BASE_URL}/user`;
 const BORROWING_API_URL = `${API_BASE_URL}/borrowing`;
-// const USER_PROFILE_URL = `${API_BASE_URL}/user`;
 
 // --- Data Tambahan (Tetap) ---
 const categoryMap = {
@@ -65,10 +64,14 @@ const Dashboard = () => {
     const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
     const [showProfileModal, setShowProfileModal] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
+    const [selectedBook, setSelectedBook] = useState(null);
+    const [borrowLoading, setBorrowLoading] = useState(false);
 
     // State untuk Data
     const [books, setBooks] = useState([]);
+    const [borrowings, setBorrowings] = useState([]); // State untuk data peminjaman
     const [isLoading, setIsLoading] = useState(true);
+    const [isLoadingBorrowings, setIsLoadingBorrowings] = useState(false); // Loading khusus peminjaman
     const [isError, setIsError] = useState(null);
     
     // State user data yang akan diisi dari API
@@ -79,7 +82,8 @@ const Dashboard = () => {
         nis: '',
         major: '',
         grade: '',
-        created_at: ''
+        created_at: '',
+        id: null // Tambahkan id user
     });
 
     const menuItems = allMenuItems.filter(item => item.roles.includes(userData.role));
@@ -96,7 +100,8 @@ const Dashboard = () => {
                 nis: '',
                 major: '',
                 grade: '',
-                created_at: ''
+                created_at: '',
+                id: null
             });
             return;
         }
@@ -118,17 +123,68 @@ const Dashboard = () => {
                     nis: user.nis || '',
                     major: user.major || '',
                     grade: user.grade || '',
-                    created_at: user.created_at || ''
+                    created_at: user.created_at || '',
+                    id: user.id || null
                 });
             }
         } catch (error) {
             console.error("Error fetching user data:", error);
             const savedUserData = localStorage.getItem('userData');
             if (savedUserData) {
-                setUserData(JSON.parse(savedUserData));
+                const parsedData = JSON.parse(savedUserData);
+                setUserData({
+                    ...parsedData,
+                    id: parsedData.id || null
+                });
             }
         }
     }, []);
+
+    // Fungsi untuk mengambil data peminjaman user
+    const fetchUserBorrowings = useCallback(async () => {
+        const token = localStorage.getItem('userToken');
+        
+        if (!token || userData.role === 'guest') {
+            setBorrowings([]);
+            return;
+        }
+
+        setIsLoadingBorrowings(true);
+        try {
+            const response = await axios.get(BORROWING_API_URL, {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    Accept: 'application/json'
+                }
+            });
+
+            console.log("Borrowings API Response:", response.data); // Debug log
+
+            if (response.data && response.data.data) {
+                // Format data peminjaman dari API
+                const formattedBorrowings = response.data.data.map(borrowing => ({
+                    id: borrowing.id,
+                    book_title: borrowing.book?.title || 'Judul tidak tersedia',
+                    book_author: borrowing.book?.author || 'Penulis tidak tersedia',
+                    borrow_date: borrowing.borrow_date || borrowing.created_at,
+                    return_date: borrowing.return_date,
+                    due_date: borrowing.due_date,
+                    status: borrowing.status || 'dipinjam',
+                    // Tambahkan field lain sesuai kebutuhan
+                }));
+
+                setBorrowings(formattedBorrowings);
+            } else {
+                setBorrowings([]);
+            }
+        } catch (error) {
+            console.error("Error fetching user borrowings:", error);
+            setBorrowings([]);
+            // Tidak set error karena mungkin user belum pernah meminjam
+        } finally {
+            setIsLoadingBorrowings(false);
+        }
+    }, [userData.role]);
 
     // --- Logika Pengambilan Data Buku Asli ---
     const fetchBooks = useCallback(async () => {
@@ -149,7 +205,7 @@ const Dashboard = () => {
                 }
             });
 
-            console.log("Books API Response:", response.data); // Debug log
+            console.log("Books API Response:", response.data);
 
             if (response.data && response.data.data) { 
                 const apiBooks = response.data.data;
@@ -158,14 +214,17 @@ const Dashboard = () => {
                     id: book.id,
                     title: book.title, 
                     author: book.author,
-                    subtitle: book.description || `oleh ${book.author}`,
+                    description: book.description || `Buku ${book.title} karya ${book.author}`,
                     cover: getBookCoverStyle(book.id), 
                     category: categoryMap[book.category_id] || 'nonfiction', 
                     featured: index < 3,
                     stock: book.stock || 0,
                     category_id: book.category_id,
                     published_year: book.published_year,
-                    isbn: book.isbn
+                    isbn: book.isbn,
+                    created_at: book.created_at,
+                    updated_at: book.updated_at,
+                    cover_image: book.cover_image
                 }));
 
                 setBooks(processedBooks);
@@ -187,6 +246,13 @@ const Dashboard = () => {
         fetchBooks();
     }, [fetchBooks]);
 
+    // Panggil fetchUserBorrowings ketika userData berubah atau menu borrowing aktif
+    useEffect(() => {
+        if (activeMenu === 'borrowing' && userData.role !== 'guest') {
+            fetchUserBorrowings();
+        }
+    }, [activeMenu, userData.role, fetchUserBorrowings]);
+
     // --- Logout Functionality ---
     const handleLogout = () => {
         localStorage.removeItem('userToken');
@@ -198,8 +264,10 @@ const Dashboard = () => {
             nis: '',
             major: '',
             grade: '',
-            created_at: ''
+            created_at: '',
+            id: null
         });
+        setBorrowings([]);
         setActiveMenu('home');
         navigate("/login");
         setBooks([]);
@@ -217,6 +285,81 @@ const Dashboard = () => {
         setProfileDropdownOpen(false);
     };
 
+    // --- Book Detail Handler ---
+    const handleBookClick = (book) => {
+        setSelectedBook(book);
+    };
+
+    const handleCloseBookModal = () => {
+        setSelectedBook(null);
+    };
+
+    // --- Borrow Book Handler ---
+    const handleBorrowBook = async (bookId) => {
+        if (userData.role === 'guest') {
+            setIsError("Anda harus login terlebih dahulu untuk meminjam buku.");
+            setSelectedBook(null);
+            navigate("/login");
+            return;
+        }
+
+        setBorrowLoading(true);
+        try {
+            const token = localStorage.getItem('userToken');
+            const response = await axios.post(
+                BORROWING_API_URL,
+                {
+                    book_id: bookId,
+                    user_id: userData.id
+                },
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        Accept: 'application/json'
+                    }
+                }
+            );
+
+            if (response.data.success) {
+                // Update stock buku di state
+                setBooks(prevBooks => 
+                    prevBooks.map(book => 
+                        book.id === bookId 
+                            ? { ...book, stock: book.stock - 1 }
+                            : book
+                    )
+                );
+                
+                // Update selected book stock
+                setSelectedBook(prev => 
+                    prev ? { ...prev, stock: prev.stock - 1 } : null
+                );
+
+                // Refresh data peminjaman
+                if (activeMenu === 'borrowing') {
+                    await fetchUserBorrowings();
+                }
+
+                setIsError("Buku berhasil dipinjam!");
+                setTimeout(() => {
+                    setSelectedBook(null);
+                    setIsError(null);
+                }, 2000);
+            } else {
+                setIsError(response.data.message || "Gagal meminjam buku.");
+            }
+        } catch (error) {
+            console.error("Error borrowing book:", error);
+            if (error.response && error.response.data && error.response.data.message) {
+                setIsError(error.response.data.message);
+            } else {
+                setIsError("Terjadi kesalahan saat meminjam buku.");
+            }
+        } finally {
+            setBorrowLoading(false);
+        }
+    };
+
     // Filter books berdasarkan kategori dan pencarian
     const filteredBooks = books.filter(book => {
         const matchesCategory = selectedCategory === 'all' || book.category === selectedCategory;
@@ -226,10 +369,50 @@ const Dashboard = () => {
         return matchesCategory && matchesSearch;
     });
 
+    // Helper function untuk menentukan status dan styling peminjaman
+    const getBorrowingStatus = (borrowing) => {
+        const today = new Date();
+        const dueDate = new Date(borrowing.due_date);
+        const returnDate = borrowing.return_date ? new Date(borrowing.return_date) : null;
+
+        if (returnDate) {
+            return {
+                text: 'Dikembalikan',
+                class: 'bg-blue-100 text-blue-700',
+                icon: '✅'
+            };
+        }
+
+        if (today > dueDate) {
+            return {
+                text: 'Terlambat',
+                class: 'bg-red-100 text-red-700',
+                icon: '⚠️'
+            };
+        }
+
+        return {
+            text: 'Dipinjam',
+            class: 'bg-green-100 text-green-700',
+            icon: '📖'
+        };
+    };
+
+    // Format tanggal untuk ditampilkan
+    // const formatDate = (dateString) => {
+    //     if (!dateString) return '-';
+    //     const date = new Date(dateString);
+    //     return date.toLocaleDateString('id-ID', {
+    //         year: 'numeric',
+    //         month: 'long',
+    //         day: 'numeric'
+    //     });
+    // };
+
     // Helper untuk rendering konten berdasarkan menu yang aktif
     const renderContent = () => {
         // --- Loading State ---
-        if (isLoading) {
+        if (isLoading && activeMenu !== 'borrowing') {
             return (
                 <div className="text-center p-12 bg-white rounded-3xl shadow-xl">
                     <div className="animate-spin inline-block w-8 h-8 border-4 border-t-4 border-amber-500 border-opacity-25 rounded-full mb-4"></div>
@@ -244,9 +427,12 @@ const Dashboard = () => {
                 <>
                     {/* Pesan Error/Peringatan */}
                     {isError && (
-                        <div className="p-4 mb-6 bg-yellow-100 border border-yellow-300 text-yellow-800 rounded-xl font-medium">
-                            <p>⚠️ Peringatan: {isError}</p>
-                            <p className="text-sm">Silakan ganti URL API base di `API_BASE_URL` dan pastikan server API (Laravel) berjalan.</p>
+                        <div className={`p-4 mb-6 rounded-xl font-medium ${
+                            isError.includes("berhasil") 
+                                ? "bg-green-100 border border-green-300 text-green-800"
+                                : "bg-yellow-100 border border-yellow-300 text-yellow-800"
+                        }`}>
+                            <p>{isError.includes("berhasil") ? "✅" : "⚠️"} {isError}</p>
                         </div>
                     )}
 
@@ -296,7 +482,11 @@ const Dashboard = () => {
                         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 lg:gap-6">
                             {filteredBooks.length > 0 ? (
                                 filteredBooks.map(book => (
-                                    <div key={book.id} className="group cursor-pointer">
+                                    <div 
+                                        key={book.id} 
+                                        className="group cursor-pointer"
+                                        onClick={() => handleBookClick(book)}
+                                    >
                                         <div 
                                             className="rounded-xl shadow-md aspect-[3/4] p-3 lg:p-4 flex flex-col justify-end transform group-hover:scale-105 group-hover:shadow-xl transition-all duration-300"
                                             style={{ background: book.cover }}
@@ -336,9 +526,12 @@ const Dashboard = () => {
                 <>
                     {/* Pesan Error/Peringatan */}
                     {isError && (
-                        <div className="p-4 mb-6 bg-yellow-100 border border-yellow-300 text-yellow-800 rounded-xl font-medium">
-                            <p>⚠️ Peringatan: {isError}</p>
-                            <p className="text-sm">Silakan ganti URL API base di `API_BASE_URL` dan pastikan server API (Laravel) berjalan.</p>
+                        <div className={`p-4 mb-6 rounded-xl font-medium ${
+                            isError.includes("berhasil") 
+                                ? "bg-green-100 border border-green-300 text-green-800"
+                                : "bg-yellow-100 border border-yellow-300 text-yellow-800"
+                        }`}>
+                            <p>{isError.includes("berhasil") ? "✅" : "⚠️"} {isError}</p>
                         </div>
                     )}
 
@@ -390,7 +583,11 @@ const Dashboard = () => {
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 lg:gap-6 mb-8">
                         {featuredBooks.length > 0 ? (
                             featuredBooks.map(book => (
-                                <div key={book.id} className="group cursor-pointer">
+                                <div 
+                                    key={book.id} 
+                                    className="group cursor-pointer"
+                                    onClick={() => handleBookClick(book)}
+                                >
                                     <div 
                                         className="rounded-2xl shadow-lg aspect-[3/4] p-4 lg:p-6 flex flex-col justify-end transform group-hover:scale-105 group-hover:shadow-2xl transition-all duration-300"
                                         style={{ background: book.cover }}
@@ -418,7 +615,11 @@ const Dashboard = () => {
                         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 lg:gap-6">
                             {interestingBooks.length > 0 ? (
                                 interestingBooks.map(book => (
-                                    <div key={book.id} className="group cursor-pointer">
+                                    <div 
+                                        key={book.id} 
+                                        className="group cursor-pointer"
+                                        onClick={() => handleBookClick(book)}
+                                    >
                                         <div 
                                             className="rounded-xl shadow-md aspect-[3/4] p-3 lg:p-4 flex flex-col justify-end transform group-hover:scale-105 group-hover:shadow-xl transition-all duration-300"
                                             style={{ background: book.cover }}
@@ -453,45 +654,81 @@ const Dashboard = () => {
                      </div>
                  );
             }
-            
-            // Data riwayat peminjaman mock
-            const mockBorrowings = [
-                { id: 1, title: 'Atomic Habits', borrowDate: '01 Okt 2025', returnDate: '08 Okt 2025', status: 'Dipinjam', statusClass: 'bg-green-100 text-green-700' },
-                { id: 2, title: 'The Subtle Art of Not Giving a F*ck', borrowDate: '25 Sep 2025', returnDate: '02 Okt 2025', status: 'Dikembalikan', statusClass: 'bg-blue-100 text-blue-700' },
-                { id: 3, title: 'Sapiens: A Brief History of Humankind', borrowDate: '15 Okt 2025', returnDate: '22 Okt 2025', status: 'Terlambat', statusClass: 'bg-red-100 text-red-700' },
-            ];
+
+            // Loading state untuk peminjaman
+            if (isLoadingBorrowings) {
+                return (
+                    <div className="text-center p-12 bg-white rounded-3xl shadow-xl">
+                        <div className="animate-spin inline-block w-8 h-8 border-4 border-t-4 border-amber-500 border-opacity-25 rounded-full mb-4"></div>
+                        <p className="text-lg font-medium text-gray-700">Memuat Data Peminjaman...</p>
+                    </div>
+                );
+            }
 
             return (
                 <div className="bg-white rounded-3xl shadow-xl p-6 lg:p-8">
-                    <h2 className="text-2xl lg:text-3xl font-bold mb-6" style={{ color: '#442D1C' }}>Riwayat Peminjaman {userData.name}</h2>
-                    <div className="overflow-x-auto">
-                        <table className="w-full">
-                            <thead>
-                                <tr style={{ borderBottom: '2px solid #E8D1A7' }}>
-                                    <th className="text-left py-4 px-4 font-semibold text-sm" style={{ color: '#442D1C' }}>No</th>
-                                    <th className="text-left py-4 px-4 font-semibold text-sm" style={{ color: '#442D1C' }}>Judul Buku</th>
-                                    <th className="text-left py-4 px-4 font-semibold text-sm" style={{ color: '#442D1C' }}>Tanggal Pinjam</th>
-                                    <th className="text-left py-4 px-4 font-semibold text-sm" style={{ color: '#442D1C' }}>Tanggal Kembali</th>
-                                    <th className="text-left py-4 px-4 font-semibold text-sm" style={{ color: '#442D1C' }}>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {mockBorrowings.map((item, index) => (
-                                    <tr key={item.id} className="border-b hover:bg-orange-50 transition-colors">
-                                        <td className="py-4 px-4 text-sm">{index + 1}</td>
-                                        <td className="py-4 px-4 font-medium text-sm">{item.title}</td>
-                                        <td className="py-4 px-4 text-sm">{item.borrowDate}</td>
-                                        <td className="py-4 px-4 text-sm">{item.returnDate}</td>
-                                        <td className="py-4 px-4">
-                                            <span className={`px-3 py-1 rounded-full text-xs font-medium ${item.statusClass}`}>
-                                                {item.status}
-                                            </span>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                    <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6">
+                        <h2 className="text-2xl lg:text-3xl font-bold mb-4 lg:mb-0" style={{ color: '#442D1C' }}>
+                            Riwayat Peminjaman {userData.name}
+                        </h2>
+                        <div className="text-sm text-gray-500">
+                            Total: {borrowings.length} peminjaman
+                        </div>
                     </div>
+
+                    {borrowings.length > 0 ? (
+                        <div className="overflow-x-auto">
+                            <table className="w-full">
+                                <thead>
+                                    <tr style={{ borderBottom: '2px solid #E8D1A7' }}>
+                                        <th className="text-left py-4 px-4 font-semibold text-sm" style={{ color: '#442D1C' }}>No</th>
+                                        <th className="text-left py-4 px-4 font-semibold text-sm" style={{ color: '#442D1C' }}>Judul Buku</th>
+                                        <th className="text-left py-4 px-4 font-semibold text-sm" style={{ color: '#442D1C' }}>Penulis</th>
+                                        <th className="text-left py-4 px-4 font-semibold text-sm" style={{ color: '#442D1C' }}>Tanggal Pinjam</th>
+                                        <th className="text-left py-4 px-4 font-semibold text-sm" style={{ color: '#442D1C' }}>Batas Kembali</th>
+                                        <th className="text-left py-4 px-4 font-semibold text-sm" style={{ color: '#442D1C' }}>Tanggal Kembali</th>
+                                        <th className="text-left py-4 px-4 font-semibold text-sm" style={{ color: '#442D1C' }}>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {borrowings.map((borrowing, index) => {
+                                        const status = getBorrowingStatus(borrowing);
+                                        return (
+                                            <tr key={borrowing.id} className="border-b hover:bg-orange-50 transition-colors">
+                                                <td className="py-4 px-4 text-sm">{index + 1}</td>
+                                                <td className="py-4 px-4 font-medium text-sm">{borrowing.book_title}</td>
+                                                <td className="py-4 px-4 text-sm">{borrowing.book_author}</td>
+                                                <td className="py-4 px-4 text-sm">{formatDate(borrowing.borrow_date)}</td>
+                                                <td className="py-4 px-4 text-sm">{formatDate(borrowing.due_date)}</td>
+                                                <td className="py-4 px-4 text-sm">
+                                                    {borrowing.return_date ? formatDate(borrowing.return_date) : '-'}
+                                                </td>
+                                                <td className="py-4 px-4">
+                                                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${status.class}`}>
+                                                        {status.icon} {status.text}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    ) : (
+                        <div className="text-center py-12">
+                            <List className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                            <p className="text-gray-500 text-lg mb-2">Belum ada riwayat peminjaman</p>
+                            <p className="text-gray-400 text-sm">
+                                Silakan pinjam buku terlebih dahulu untuk melihat riwayat peminjaman Anda.
+                            </p>
+                            <button
+                                onClick={() => setActiveMenu('books')}
+                                className="mt-4 px-6 py-2 bg-amber-500 text-white rounded-full font-semibold hover:bg-amber-600 transition-colors"
+                            >
+                                Pinjam Buku Sekarang
+                            </button>
+                        </div>
+                    )}
                 </div>
             );
         }
@@ -747,6 +984,159 @@ const Dashboard = () => {
                             >
                                 Tutup
                             </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal Detail Buku */}
+            {selectedBook && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                        {/* Header Modal */}
+                        <div className="p-6 border-b border-gray-100">
+                            <div className="flex items-center justify-between">
+                                <h2 className="text-2xl font-bold" style={{ color: '#442D1C' }}>Detail Buku</h2>
+                                <button 
+                                    onClick={handleCloseBookModal}
+                                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                                >
+                                    <X className="w-5 h-5 text-gray-500" />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Content Modal */}
+                        <div className="p-6">
+                            <div className="flex flex-col lg:flex-row gap-6">
+                                {/* Cover Buku */}
+                                <div className="flex-shrink-0">
+                                    <div 
+                                        className="rounded-2xl shadow-lg w-48 h-64 flex items-center justify-center mx-auto lg:mx-0"
+                                        style={{ background: selectedBook.cover }}
+                                    >
+                                        <div className="text-white text-center p-4">
+                                            <p className="text-sm opacity-90 mb-2">{selectedBook.author}</p>
+                                            <h3 className="text-lg font-bold">{selectedBook.title}</h3>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Informasi Buku */}
+                                <div className="flex-1">
+                                    <h3 className="text-2xl font-bold mb-2" style={{ color: '#442D1C' }}>{selectedBook.title}</h3>
+                                    <p className="text-gray-600 mb-4">oleh {selectedBook.author}</p>
+
+                                    {/* Deskripsi Buku */}
+                                    <div className="mb-6">
+                                        <h4 className="font-semibold mb-2" style={{ color: '#442D1C' }}>Deskripsi</h4>
+                                        <p className="text-gray-700 leading-relaxed">{selectedBook.description}</p>
+                                    </div>
+
+                                    {/* Informasi Detail */}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                                        <div className="flex items-center gap-3">
+                                            <Hash className="w-4 h-4 text-amber-600" />
+                                            <div>
+                                                <p className="text-sm text-gray-500">Kategori</p>
+                                                <p className="font-semibold capitalize">{selectedBook.category}</p>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center gap-3">
+                                            <CalendarDays className="w-4 h-4 text-amber-600" />
+                                            <div>
+                                                <p className="text-sm text-gray-500">Tahun Terbit</p>
+                                                <p className="font-semibold">{selectedBook.published_year || 'Tidak diketahui'}</p>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center gap-3">
+                                            <Book className="w-4 h-4 text-amber-600" />
+                                            <div>
+                                                <p className="text-sm text-gray-500">ISBN</p>
+                                                <p className="font-semibold">{selectedBook.isbn || 'Tidak tersedia'}</p>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center gap-3">
+                                            <Clock className="w-4 h-4 text-amber-600" />
+                                            <div>
+                                                <p className="text-sm text-gray-500">Ditambahkan</p>
+                                                <p className="font-semibold">{formatDate(selectedBook.created_at)}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Status Stok */}
+                                    <div className={`flex items-center gap-3 p-4 rounded-xl mb-6 ${
+                                        selectedBook.stock > 0 
+                                            ? 'bg-green-50 border border-green-200' 
+                                            : 'bg-red-50 border border-red-200'
+                                    }`}>
+                                        {selectedBook.stock > 0 ? (
+                                            <>
+                                                <CheckCircle className="w-5 h-5 text-green-600" />
+                                                <div>
+                                                    <p className="font-semibold text-green-700">Tersedia</p>
+                                                    <p className="text-sm text-green-600">{selectedBook.stock} buku tersedia untuk dipinjam</p>
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <AlertCircle className="w-5 h-5 text-red-600" />
+                                                <div>
+                                                    <p className="font-semibold text-red-700">Stok Habis</p>
+                                                    <p className="text-sm text-red-600">Buku sedang tidak tersedia untuk dipinjam</p>
+                                                </div>
+                                            </>
+                                        )}
+                                    </div>
+
+                                    {/* Tombol Aksi */}
+                                    <div className="flex gap-3">
+                                        <button
+                                            onClick={handleCloseBookModal}
+                                            className="flex-1 py-3 px-6 border border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition-colors"
+                                        >
+                                            Tutup
+                                        </button>
+                                        
+                                        {userData.role !== 'guest' && (
+                                            <button
+                                                onClick={() => handleBorrowBook(selectedBook.id)}
+                                                disabled={selectedBook.stock === 0 || borrowLoading}
+                                                className={`flex-1 py-3 px-6 rounded-xl font-semibold transition-colors ${
+                                                    selectedBook.stock === 0
+                                                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                                        : 'bg-amber-500 text-white hover:bg-amber-600'
+                                                }`}
+                                            >
+                                                {borrowLoading ? (
+                                                    <div className="flex items-center justify-center gap-2">
+                                                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                                                        <span>Meminjam...</span>
+                                                    </div>
+                                                ) : (
+                                                    'Pinjam Buku'
+                                                )}
+                                            </button>
+                                        )}
+
+                                        {userData.role === 'guest' && (
+                                            <button
+                                                onClick={() => {
+                                                    setSelectedBook(null);
+                                                    navigate("/login");
+                                                }}
+                                                className="flex-1 py-3 px-6 bg-amber-500 text-white rounded-xl font-semibold hover:bg-amber-600 transition-colors"
+                                            >
+                                                Login untuk Meminjam
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
