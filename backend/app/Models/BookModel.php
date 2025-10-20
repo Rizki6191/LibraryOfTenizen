@@ -14,4 +14,9 @@ class BookModel extends Model
         'category_id',   // foreign key ke kategori
         'stock',         // jumlah stok buku
     ];
+
+    public function category()
+    {
+        return $this->belongsTo(Category::class, 'category_id');
+    }
 }

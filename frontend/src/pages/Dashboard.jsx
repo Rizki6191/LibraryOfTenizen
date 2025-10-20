@@ -12,62 +12,27 @@ const BOOKS_API_URL = `${API_BASE_URL}/books`;
 const USER_PROFILE_URL = `${API_BASE_URL}/user`;
 const BORROWING_API_URL = `${API_BASE_URL}/borrowing`;
 const ALL_BORROWINGS_URL = `${API_BASE_URL}/borrowing`;
+const CATEGORIES_API_URL = `${API_BASE_URL}/categories`; // ✅ Ditambahkan
 
-// --- Data Tambahan (Tetap) ---
-// Map category_id dari database ke slug/nama internal yang digunakan di aplikasi.
-// Mendukung baik number maupun string untuk antisipasi tipe data dari API.
-const categoryMap = {
-    1: 'romance',
-    2: 'self-help',
-    3: 'biography',
-    4: 'fantasy',
-    5: 'science-fiction',
-    6: 'mystery',
-    7: 'thriller',
-    8: 'horror',
-    9: 'history',
-    10: 'business',
-    11: 'health-fitness',
-    12: 'children',
-    14: 'drama',
-    15: 'slice-of-life',
-    17: 'mystery',
-    // Versi string (untuk keamanan jika API kirim string)
-    '1': 'romance',
-    '2': 'self-help',
-    '3': 'biography',
-    '4': 'fantasy',
-    '5': 'science-fiction',
-    '6': 'mystery',
-    '7': 'thriller',
-    '8': 'horror',
-    '9': 'history',
-    '10': 'business',
-    '11': 'health-fitness',
-    '12': 'children',
-    '14': 'drama',
-    '15': 'slice-of-life',
-    '17': 'mystery'
-};
-
-// Daftar kategori yang ditampilkan di UI.
-// `id` harus sesuai dengan nilai yang dikembalikan oleh `categoryMap`.
+// --- Daftar Kategori ---
+// `id` adalah angka sesuai `category_id` di database.
+// Ini hanya untuk UI, data sebenarnya diambil dari API.
 const categories = [
     { id: 'all', name: 'Semua', icon: BookOpen },
-    { id: 'romance', name: 'Romansa', icon: Heart },
-    { id: 'self-help', name: 'Self-Help', icon: GraduationCap },
-    { id: 'biography', name: 'Biografi', icon: Users },
-    { id: 'fantasy', name: 'Fantasi', icon: Book },
-    { id: 'science-fiction', name: 'Fiksi Ilmiah', icon: Search },
-    { id: 'mystery', name: 'Misteri', icon: AlertCircle },
-    { id: 'thriller', name: 'Thriller', icon: TrendingUp },
-    { id: 'horror', name: 'Horor', icon: AlertCircle },
-    { id: 'history', name: 'Sejarah', icon: BookOpen },
-    { id: 'business', name: 'Bisnis', icon: TrendingUp },
-    { id: 'health-fitness', name: 'Kesehatan & Kebugaran', icon: Users },
-    { id: 'children', name: 'Anak-Anak', icon: Book },
-    { id: 'drama', name: 'Drama', icon: Heart },
-    { id: 'slice-of-life', name: 'Slice of Life', icon: BookOpen },
+    { id: 1, name: 'Romansa', icon: Heart },
+    { id: 2, name: 'Self-Help', icon: GraduationCap },
+    { id: 3, name: 'Biografi', icon: Users },
+    { id: 4, name: 'Fantasi', icon: Book },
+    { id: 5, name: 'Fiksi Ilmiah', icon: Search },
+    { id: 6, name: 'Misteri', icon: AlertCircle },
+    { id: 7, name: 'Thriller', icon: TrendingUp },
+    { id: 8, name: 'Horor', icon: AlertCircle },
+    { id: 9, name: 'Sejarah', icon: BookOpen },
+    { id: 10, name: 'Bisnis', icon: TrendingUp },
+    { id: 11, name: 'Kesehatan & Kebugaran', icon: Users },
+    { id: 12, name: 'Anak-Anak', icon: Book },
+    { id: 14, name: 'Drama', icon: Heart },
+    { id: 15, name: 'Slice of Life', icon: BookOpen },
 ];
 
 const allMenuItems = [
@@ -107,7 +72,7 @@ const Dashboard = () => {
         title: '',
         author: '',
         description: '',
-        category_id: 1,
+        category_id: 1, // Default ke Romansa (ID 1)
         stock: 1,
         published_year: new Date().getFullYear(),
         isbn: ''
@@ -203,7 +168,6 @@ const Dashboard = () => {
                     Accept: 'application/json'
                 }
             });
-            console.log("Borrowings API Response:", response.data);
             if (response.data && response.data.data) {
                 const formattedBorrowings = response.data.data.map(borrowing => ({
                     id: borrowing.id,
@@ -254,16 +218,34 @@ const Dashboard = () => {
                     Accept: 'application/json'
                 }
             });
-            console.log("Books API Response:", response.data);
-            if (response.data && response.data.data) { 
-                const apiBooks = response.data.data;
-                const processedBooks = apiBooks.map((book, index) => ({
+            
+            // ✅ Perbaikan: Tangani kasus di mana API tidak mengembalikan data
+            if (!response.data || !Array.isArray(response.data.data)) {
+                console.error("Invalid API response format:", response.data);
+                setIsError("Format data API tidak valid. Pastikan backend mengembalikan { data: [...] }.");
+                setBooks([]);
+                return;
+            }
+
+            const apiBooks = response.data.data;
+            const processedBooks = apiBooks.map((book, index) => {
+                // ✅ Ambil nama kategori dari relasi jika tersedia, jika tidak, gunakan ID
+                let categoryName = 'Unknown';
+                if (book.category && book.category.name) {
+                    categoryName = book.category.name;
+                } else if (book.category_id) {
+                    // Fallback: Cari nama berdasarkan category_id
+                    const cat = categories.find(c => c.id === book.category_id);
+                    categoryName = cat ? cat.name : `Kategori ${book.category_id}`;
+                }
+
+                return {
                     id: book.id,
                     title: book.title, 
                     author: book.author,
                     description: book.description || `Buku ${book.title} karya ${book.author}`,
                     cover: getBookCoverStyle(book.id), 
-                    category: categoryMap[book.category_id] || 'unknown', // ✅ Gunakan categoryMap yang baru
+                    category: categoryName, // ✅ Gunakan nama yang sudah diproses
                     featured: index < 3,
                     stock: book.stock || 0,
                     category_id: book.category_id,
@@ -272,26 +254,28 @@ const Dashboard = () => {
                     created_at: book.created_at,
                     updated_at: book.updated_at,
                     cover_image: book.cover_image
-                }));
-                setBooks(processedBooks);
-            } else {
-                setIsError("Gagal mengambil data buku dari API. Format data tidak sesuai.");
-            }
+                };
+            });
+            setBooks(processedBooks);
         } catch (error) {
             console.error("Error fetching books:", error);
-            setIsError(`Terjadi kesalahan saat memuat data: ${error.message}. Pastikan API server berjalan di ${API_BASE_URL}.`);
+            if (error.response) {
+                // Error dari server (4xx, 5xx)
+                setIsError(`Error ${error.response.status}: ${error.response.data.message || 'Gagal memuat data buku.'}`);
+            } else if (error.request) {
+                // Tidak ada respon dari server
+                setIsError("Tidak dapat terhubung ke server API. Pastikan Laravel berjalan di http://127.0.0.1:8000.");
+            } else {
+                // Error lain
+                setIsError(`Terjadi kesalahan: ${error.message}`);
+            }
             setBooks([]);
         } finally {
             setIsLoading(false);
         }
     }, [fetchUserData]);
 
-    // Panggil fetchBooks saat komponen dimuat
-    useEffect(() => {
-        fetchBooks();
-    }, [fetchBooks]);
-
-    // Panggil fetchBorrowings ketika userData berubah atau menu borrowing aktif
+    useEffect(() => { fetchBooks(); }, [fetchBooks]);
     useEffect(() => {
         if (activeMenu === 'borrowing' && userData.role !== 'guest') {
             fetchBorrowings();
@@ -324,7 +308,6 @@ const Dashboard = () => {
     const handleProfileClick = () => {
         setProfileDropdownOpen(!profileDropdownOpen);
     };
-
     const handleViewProfile = () => {
         setShowProfileModal(true);
         setProfileDropdownOpen(false);
@@ -336,7 +319,6 @@ const Dashboard = () => {
         setEditBookData({ ...book });
         setIsEditing(false);
     };
-
     const handleCloseBookModal = () => {
         setSelectedBook(null);
         setIsEditing(false);
@@ -347,7 +329,6 @@ const Dashboard = () => {
     const handleUserClick = (user) => {
         setSelectedUser(user);
     };
-
     const handleCloseUserModal = () => {
         setSelectedUser(null);
     };
@@ -358,7 +339,6 @@ const Dashboard = () => {
             setIsEditing(true);
         }
     };
-
     const handleCancelEdit = () => {
         setIsEditing(false);
         setEditBookData(selectedBook ? { ...selectedBook } : {});
@@ -366,145 +346,212 @@ const Dashboard = () => {
 
     // --- Update Book Handler ---
     const handleUpdateBook = async () => {
-        if (!selectedBook) return;
-        setIsSaving(true);
-        try {
-            const token = localStorage.getItem('userToken');
-            const response = await axios.put(
-                `${BOOKS_API_URL}/${selectedBook.id}`,
-                {
-                    title: editBookData.title,
-                    author: editBookData.author,
-                    description: editBookData.description,
-                    category_id: editBookData.category_id,
-                    stock: editBookData.stock,
-                    published_year: editBookData.published_year,
-                    isbn: editBookData.isbn
-                },
-                {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                        Accept: 'application/json'
-                    }
+    if (!selectedBook) return;
+    setIsSaving(true);
+    try {
+        const token = localStorage.getItem('userToken');
+        const response = await axios.put(
+            `${BOOKS_API_URL}/${selectedBook.id}`,
+            {
+                ...editBookData,
+                category_id: parseInt(editBookData.category_id)
+            },
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    Accept: 'application/json'
                 }
-            );
-            if (response.data.success) {
-                // Refresh data books
-                await fetchBooks();
-                setIsError("Buku berhasil diupdate!");
-                // AUTO CLOSE MODAL
+            }
+        );
+        if (response.data.success) {
+            // 1. Fetch data buku terbaru
+            await fetchBooks();
+            
+            // 2. Tampilkan notifikasi sukses
+            setIsError("Buku berhasil diupdate!");
+            
+            // 3. Reset semua state edit secara bersamaan (PENTING)
+            setIsEditing(false);
+            setEditBookData({});
+            
+            // 4. Close modal dengan delay untuk memastikan React render selesai
+            setTimeout(() => {
                 setSelectedBook(null);
-                setIsEditing(false);
-                setEditBookData({});
-                setTimeout(() => {
-                    setIsError(null);
-                }, 2000);
-            } else {
-                setIsError(response.data.message || "Gagal mengupdate buku.");
-            }
-        } catch (error) {
-            console.error("Error updating book:", error);
-            if (error.response && error.response.data && error.response.data.message) {
-                setIsError(error.response.data.message);
-            } else {
-                setIsError("Terjadi kesalahan saat mengupdate buku.");
-            }
-        } finally {
+            }, 100);
+            
+            // 5. Switch menu SETELAH modal benar-benar tertutup
+            setTimeout(() => {
+                setActiveMenu('books');
+            }, 200);
+            
+            // 6. Hapus notifikasi
+            setTimeout(() => { setIsError(null); }, 2500);
+        } else {
+            setIsError(response.data.message || "Gagal mengupdate buku.");
             setIsSaving(false);
         }
-    };
+    } catch (error) {
+        console.error("Error updating book:", error);
+        if (error.response && error.response.data && error.response.data.message) {
+            setIsError(error.response.data.message);
+        } else {
+            setIsError("Terjadi kesalahan saat mengupdate buku.");
+        }
+        setIsSaving(false);
+    }
+};
 
     // --- Delete Book Handler ---
     const handleDeleteBook = async () => {
-        if (!selectedBook) return;
-        if (!window.confirm(`Apakah Anda yakin ingin menghapus buku "${selectedBook.title}"?`)) {
-            return;
-        }
-        setIsSaving(true);
-        try {
-            const token = localStorage.getItem('userToken');
-            const response = await axios.delete(
-                `${BOOKS_API_URL}/${selectedBook.id}`,
-                {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                        Accept: 'application/json'
-                    }
+    if (!selectedBook) return;
+    if (!window.confirm(`Apakah Anda yakin ingin menghapus buku "${selectedBook.title}"?`)) {
+        return;
+    }
+    setIsSaving(true);
+    try {
+        const token = localStorage.getItem('userToken');
+        const response = await axios.delete(
+            `${BOOKS_API_URL}/${selectedBook.id}`,
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    Accept: 'application/json'
                 }
-            );
-            if (response.data.success) {
-                // Refresh data books
-                await fetchBooks();
-                setIsError("Buku berhasil dihapus!");
-                // AUTO CLOSE MODAL
+            }
+        );
+        if (response.data.success) {
+            // 1. Fetch data buku terbaru
+            await fetchBooks();
+            
+            // 2. Tampilkan notifikasi sukses
+            setIsError("Buku berhasil dihapus!");
+            
+            // 3. Reset semua state edit secara bersamaan (PENTING)
+            setIsEditing(false);
+            setEditBookData({});
+            
+            // 4. Close modal dengan delay
+            setTimeout(() => {
                 setSelectedBook(null);
-                setIsEditing(false);
-                setEditBookData({});
-                setTimeout(() => {
-                    setIsError(null);
-                }, 2000);
-            } else {
-                setIsError(response.data.message || "Gagal menghapus buku.");
-            }
-        } catch (error) {
-            console.error("Error deleting book:", error);
-            if (error.response && error.response.data && error.response.data.message) {
-                setIsError(error.response.data.message);
-            } else {
-                setIsError("Terjadi kesalahan saat menghapus buku.");
-            }
-        } finally {
+            }, 100);
+            
+            // 5. Switch menu SETELAH modal benar-benar tertutup
+            setTimeout(() => {
+                setActiveMenu('books');
+            }, 200);
+            
+            // 6. Hapus notifikasi
+            setTimeout(() => { setIsError(null); }, 2500);
+        } else {
+            setIsError(response.data.message || "Gagal menghapus buku.");
             setIsSaving(false);
         }
-    };
+    } catch (error) {
+        console.error("Error deleting book:", error);
+        if (error.response && error.response.data && error.response.data.message) {
+            setIsError(error.response.data.message);
+        } else {
+            setIsError("Terjadi kesalahan saat menghapus buku.");
+        }
+        setIsSaving(false);
+    }
+};
 
     // --- Create Book Handler ---
     const handleCreateBook = async () => {
-        setIsSaving(true);
-        try {
-            const token = localStorage.getItem('userToken');
-            const response = await axios.post(
-                BOOKS_API_URL,
-                newBookData,
-                {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                        Accept: 'application/json'
-                    }
+    setIsSaving(true);
+    try {
+        const token = localStorage.getItem('userToken');
+        const response = await axios.post(
+            BOOKS_API_URL,
+            {
+                ...newBookData,
+                category_id: parseInt(newBookData.category_id)
+            },
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    Accept: 'application/json'
                 }
-            );
-            if (response.data.success) {
-                // Refresh data books
-                await fetchBooks();
-                // AUTO CLOSE MODAL
+            }
+        );
+        if (response.data.success) {
+            // 1. PENTING: Ambil data buku baru dari response
+            const newBook = response.data.data;
+            
+            // 2. Tambahkan buku baru ke state books secara IMMEDIATE
+            // Ini membuat buku langsung muncul di UI tanpa tunggu fetchBooks()
+            if (newBook) {
+                const categoryName = categories.find(c => c.id === newBook.category_id)?.name || 'Unknown';
+                const processedNewBook = {
+                    id: newBook.id,
+                    title: newBook.title,
+                    author: newBook.author,
+                    description: newBook.description || `Buku ${newBook.title} karya ${newBook.author}`,
+                    cover: getBookCoverStyle(newBook.id),
+                    category: categoryName,
+                    featured: false,
+                    stock: newBook.stock || 0,
+                    category_id: newBook.category_id,
+                    published_year: newBook.published_year,
+                    isbn: newBook.isbn,
+                    created_at: newBook.created_at,
+                    updated_at: newBook.updated_at,
+                    cover_image: newBook.cover_image
+                };
+                
+                // Tambahkan ke array books
+                setBooks(prevBooks => [processedNewBook, ...prevBooks]);
+            }
+            
+            // 3. Tampilkan notifikasi sukses
+            setIsError("Buku berhasil ditambahkan!");
+            
+            // 4. Reset form
+            setNewBookData({
+                title: '',
+                author: '',
+                description: '',
+                category_id: 1,
+                stock: 1,
+                published_year: new Date().getFullYear(),
+                isbn: ''
+            });
+            
+            // 5. Close modal dengan delay
+            setTimeout(() => {
                 setShowCreateModal(false);
-                setNewBookData({
-                    title: '',
-                    author: '',
-                    description: '',
-                    category_id: 3,
-                    stock: 1,
-                    published_year: new Date().getFullYear(),
-                    isbn: ''
-                });
-                setIsError("Buku berhasil ditambahkan!");
-                setTimeout(() => {
-                    setIsError(null);
-                }, 2000);
-            } else {
-                setIsError(response.data.message || "Gagal menambahkan buku.");
-            }
-        } catch (error) {
-            console.error("Error creating book:", error);
-            if (error.response && error.response.data && error.response.data.message) {
-                setIsError(error.response.data.message);
-            } else {
-                setIsError("Terjadi kesalahan saat menambahkan buku.");
-            }
-        } finally {
+            }, 100);
+            
+            // 6. Switch menu SETELAH modal tertutup
+            setTimeout(() => {
+                setActiveMenu('books');
+                // OPTIONAL: Clear filter agar buku baru terlihat di "Semua"
+                setSelectedCategory('all');
+            }, 200);
+            
+            // 7. Fetch data untuk sync dengan backend (di background, tidak critical)
+            // Ini opsional, cuma untuk memastikan data sync dengan backend
+            setTimeout(() => {
+                fetchBooks();
+            }, 500);
+            
+            // 8. Hapus notifikasi
+            setTimeout(() => { setIsError(null); }, 2500);
+        } else {
+            setIsError(response.data.message || "Gagal menambahkan buku.");
             setIsSaving(false);
         }
-    };
+    } catch (error) {
+        console.error("Error creating book:", error);
+        if (error.response && error.response.data && error.response.data.message) {
+            setIsError(error.response.data.message);
+        } else {
+            setIsError("Terjadi kesalahan saat menambahkan buku.");
+        }
+        setIsSaving(false);
+    }
+};
 
     // --- Borrow Book Handler ---
     const handleBorrowBook = async (bookId) => {
@@ -514,7 +561,6 @@ const Dashboard = () => {
             navigate("/login");
             return;
         }
-        // Admin tidak bisa meminjam buku
         if (userData.role === 'admin') {
             setIsError("Admin tidak dapat meminjam buku.");
             return;
@@ -536,17 +582,13 @@ const Dashboard = () => {
                 }
             );
             if (response.data.success) {
-                // Refresh data books untuk update stok
                 await fetchBooks();
                 if (activeMenu === 'borrowing') {
                     await fetchBorrowings();
                 }
                 setIsError("Buku berhasil dipinjam!");
-                // AUTO CLOSE MODAL
                 setSelectedBook(null);
-                setTimeout(() => {
-                    setIsError(null);
-                }, 2000);
+                setTimeout(() => { setIsError(null); }, 2000);
             } else {
                 setIsError(response.data.message || "Gagal meminjam buku.");
             }
@@ -564,7 +606,7 @@ const Dashboard = () => {
 
     // Filter books berdasarkan kategori dan pencarian
     const filteredBooks = books.filter(book => {
-        const matchesCategory = selectedCategory === 'all' || book.category === selectedCategory;
+        const matchesCategory = selectedCategory === 'all' || book.category_id === selectedCategory;
         const matchesSearch = searchQuery === '' || 
             book.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
             book.author.toLowerCase().includes(searchQuery.toLowerCase());
@@ -610,7 +652,6 @@ const Dashboard = () => {
 
     // Helper untuk rendering konten berdasarkan menu yang aktif
     const renderContent = () => {
-        // --- Loading State ---
         if (isLoading && activeMenu !== 'borrowing') {
             return (
                 <div className="text-center p-12 bg-white rounded-3xl shadow-xl">
@@ -620,11 +661,9 @@ const Dashboard = () => {
             );
         }
 
-        // --- Tampilan Daftar Buku ---
         if (activeMenu === 'books') {
             return (
                 <>
-                    {/* Pesan Error/Peringatan */}
                     {isError && (
                         <div className={`p-4 mb-6 rounded-xl font-medium ${
                             isError.includes("berhasil") 
@@ -640,7 +679,6 @@ const Dashboard = () => {
                                 Semua Buku ({filteredBooks.length})
                             </h2>
                             <div className="flex flex-col lg:flex-row gap-4">
-                                {/* Search Bar untuk Books Page */}
                                 <div className="w-full lg:w-64">
                                     <div className="relative">
                                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -653,7 +691,6 @@ const Dashboard = () => {
                                         />
                                     </div>
                                 </div>
-                                {/* Tombol Create untuk Admin */}
                                 {userData.role === 'admin' && (
                                     <button
                                         onClick={() => setShowCreateModal(true)}
@@ -665,7 +702,6 @@ const Dashboard = () => {
                                 )}
                             </div>
                         </div>
-                        {/* Categories Filter */}
                         <div className="mb-6">
                             <div className="flex gap-2 overflow-x-auto pb-4" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                                 {categories.map(cat => (
@@ -685,7 +721,6 @@ const Dashboard = () => {
                                 ))}
                             </div>
                         </div>
-                        {/* Books Grid */}
                         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 lg:gap-6">
                             {filteredBooks.length > 0 ? (
                                 filteredBooks.map(book => (
@@ -724,13 +759,11 @@ const Dashboard = () => {
             );
         }
 
-        // --- Tampilan Beranda (Home) ---
         if (activeMenu === 'home') {
             const featuredBooks = books.filter(b => b.featured).slice(0, 4); 
             const interestingBooks = books.filter(b => !b.featured);
             return (
                 <>
-                    {/* Pesan Error/Peringatan */}
                     {isError && (
                         <div className={`p-4 mb-6 rounded-xl font-medium ${
                             isError.includes("berhasil") 
@@ -740,7 +773,6 @@ const Dashboard = () => {
                             <p>{isError.includes("berhasil") ? "✅" : "⚠️"} {isError}</p>
                         </div>
                     )}
-                    {/* Categories */}
                     <div className="mb-8">
                         <div className="flex gap-3 overflow-x-auto pb-4" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                             {categories.map(cat => (
@@ -760,7 +792,6 @@ const Dashboard = () => {
                             ))}
                         </div>
                     </div>
-                    {/* Hero Section */}
                     <div className="bg-white rounded-3xl shadow-xl p-6 lg:p-8 mb-8 relative overflow-hidden">
                         <div className="absolute top-0 right-0 w-64 h-64 rounded-full blur-3xl opacity-30" style={{ background: 'linear-gradient(135deg, #fde68a, #fed7aa)' }}></div>
                         <div className="relative z-10">
@@ -770,7 +801,7 @@ const Dashboard = () => {
                                 {userData.role === 'guest' ? 'Akses Terbatas' : 'BESTSELLERS'}
                             </h2>
                             <p className="text-gray-600 mb-6 max-w-md">
-                                {userData.role === 'guest' ? 'Silakan login untuk melihat riwayat peminjaman.' : `Selamat datang kembali, ${userData.name}! Kami memilih buku-buku terbaik yang direkomendasikan untuk Anda.`}
+                                {userData.role === 'guest' ? 'Silakan login untuk melihat riwayat peminjaman.' : `Selamat datang kembali, ${userData.name}!`}
                             </p>
                             <button 
                                 onClick={() => setActiveMenu('books')}
@@ -781,7 +812,6 @@ const Dashboard = () => {
                             </button>
                         </div>
                     </div>
-                    {/* Featured Books */}
                     <h3 className="text-xl font-semibold mb-4" style={{ color: '#442D1C' }}>Pilihan Unggulan ({featuredBooks.length})</h3>
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 lg:gap-6 mb-8">
                         {featuredBooks.length > 0 ? (
@@ -809,7 +839,6 @@ const Dashboard = () => {
                             </div>
                         )}
                     </div>
-                    {/* Can Be Interesting Section */}
                     <div className="bg-white rounded-3xl shadow-xl p-6 lg:p-8">
                         <h3 className="text-2xl lg:text-3xl font-bold mb-4 lg:mb-6 leading-tight" style={{ color: '#442D1C' }}>
                             MUNGKIN MENARIK<br />BAGI ANDA ({interestingBooks.length})
@@ -845,7 +874,6 @@ const Dashboard = () => {
             );
         }
 
-        // --- Tampilan Peminjaman (Borrowing) ---
         if (activeMenu === 'borrowing') {
             if (userData.role === 'guest') {
                  return (
@@ -1029,18 +1057,13 @@ const Dashboard = () => {
                     </div>
                 </div>
             </aside>
-
-            {/* Overlay */}
             {sidebarOpen && (
                 <div 
                     className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
                     onClick={() => setSidebarOpen(false)}
                 />
             )}
-
-            {/* Main Content */}
             <div className="lg:ml-64">
-                {/* Header */}
                 <header className="bg-white shadow-md sticky top-0 z-30">
                     <div className="flex items-center gap-4 px-4 lg:px-8 py-4">
                         <button 
@@ -1050,7 +1073,6 @@ const Dashboard = () => {
                         >
                             <Menu className="w-6 h-6" style={{ color: '#442D1C' }} />
                         </button>
-                        {/* Search Bar */}
                         <div className="flex-1 max-w-2xl">
                             <div className="relative">
                                 <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -1063,7 +1085,6 @@ const Dashboard = () => {
                                 />
                             </div>
                         </div>
-                        {/* User Profile dengan Dropdown */}
                         <div className="relative">
                             <div 
                                 className="flex items-center gap-3 bg-orange-50 px-4 py-2 rounded-full cursor-pointer hover:bg-orange-100 transition-all"
@@ -1079,7 +1100,6 @@ const Dashboard = () => {
                                     <p className="text-xs text-gray-500 capitalize">{userData.role}</p>
                                 </div>
                             </div>
-                            {/* Dropdown Menu */}
                             {profileDropdownOpen && (
                                 <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-2xl border border-gray-100 py-2 z-50">
                                     <button
@@ -1101,13 +1121,10 @@ const Dashboard = () => {
                         </div>
                     </div>
                 </header>
-
-                {/* Content */}
                 <main className="p-4 lg:p-8">
                     {renderContent()}
                 </main>
             </div>
-
             {/* Modal Profil */}
             {showProfileModal && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -1193,7 +1210,6 @@ const Dashboard = () => {
                     </div>
                 </div>
             )}
-
             {/* Modal Detail User (untuk admin) */}
             {selectedUser && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -1272,7 +1288,6 @@ const Dashboard = () => {
                     </div>
                 </div>
             )}
-
             {/* Modal Detail Buku */}
             {selectedBook && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -1283,7 +1298,6 @@ const Dashboard = () => {
                                     {isEditing ? 'Edit Buku' : 'Detail Buku'}
                                 </h2>
                                 <div className="flex items-center gap-2">
-                                    {/* Tombol Edit/Delete untuk Admin */}
                                     {userData.role === 'admin' && !isEditing && (
                                         <>
                                             <button
@@ -1322,7 +1336,6 @@ const Dashboard = () => {
                         </div>
                         <div className="p-6">
                             <div className="flex flex-col lg:flex-row gap-6">
-                                {/* Cover Buku */}
                                 <div className="flex-shrink-0">
                                     <div 
                                         className="rounded-2xl shadow-lg w-48 h-64 flex items-center justify-center mx-auto lg:mx-0"
@@ -1334,10 +1347,8 @@ const Dashboard = () => {
                                         </div>
                                     </div>
                                 </div>
-                                {/* Informasi Buku */}
                                 <div className="flex-1">
                                     {isEditing ? (
-                                        // Form Edit
                                         <div className="space-y-4">
                                             <div>
                                                 <label className="block text-sm font-medium text-gray-700 mb-1">Judul Buku</label>
@@ -1370,7 +1381,7 @@ const Dashboard = () => {
                                                 <div>
                                                     <label className="block text-sm font-medium text-gray-700 mb-1">Kategori</label>
                                                     <select
-                                                        value={editBookData.category_id || 3}
+                                                        value={editBookData.category_id}
                                                         onChange={(e) => setEditBookData({...editBookData, category_id: parseInt(e.target.value)})}
                                                         className="w-full p-3 border border-gray-300 rounded-xl focus:border-amber-400 focus:ring-1 focus:ring-amber-400 outline-none"
                                                     >
@@ -1413,11 +1424,9 @@ const Dashboard = () => {
                                             </div>
                                         </div>
                                     ) : (
-                                        // Tampilan Detail
                                         <>
                                             <h3 className="text-2xl font-bold mb-2" style={{ color: '#442D1C' }}>{selectedBook.title}</h3>
                                             <p className="text-gray-600 mb-4">oleh {selectedBook.author}</p>
-                                            {/* Deskripsi Buku */}
                                             <div className="mb-6" onDoubleClick={handleDoubleClickEdit}>
                                                 <h4 className="font-semibold mb-2" style={{ color: '#442D1C' }}>Deskripsi</h4>
                                                 <p className="text-gray-700 leading-relaxed">{selectedBook.description}</p>
@@ -1425,7 +1434,6 @@ const Dashboard = () => {
                                                     <p className="text-xs text-gray-400 mt-1">Double click untuk edit</p>
                                                 )}
                                             </div>
-                                            {/* Informasi Detail */}
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                                                 <div className="flex items-center gap-3">
                                                     <Hash className="w-4 h-4 text-amber-600" />
@@ -1456,7 +1464,6 @@ const Dashboard = () => {
                                                     </div>
                                                 </div>
                                             </div>
-                                            {/* Status Stok */}
                                             <div className={`flex items-center gap-3 p-4 rounded-xl mb-6 ${
                                                 selectedBook.stock > 0 
                                                     ? 'bg-green-50 border border-green-200' 
@@ -1482,7 +1489,6 @@ const Dashboard = () => {
                                             </div>
                                         </>
                                     )}
-                                    {/* Tombol Aksi */}
                                     <div className="flex gap-3">
                                         {isEditing ? (
                                             <>
@@ -1563,7 +1569,6 @@ const Dashboard = () => {
                     </div>
                 </div>
             )}
-
             {/* Modal Create Book */}
             {showCreateModal && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">

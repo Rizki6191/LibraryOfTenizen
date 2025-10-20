@@ -7,66 +7,6 @@ use Illuminate\Http\Request;
 
 class BookModelController extends Controller
 {
-/**
- * @OA\Get(
- *     path="/api/books",
- *     summary="Ambil semua buku",
- *     tags={"Books"},
- *     @OA\Response(response=200, description="Berhasil mengambil data buku")
- * )
-
- * @OA\Post(
- *     path="/api/books",
- *     summary="Tambah buku baru",
- *     tags={"Books"},
- *     @OA\RequestBody(
- *         required=true,
- *         @OA\JsonContent(
- *             required={"title", "author", "category_id"},
- *             @OA\Property(property="title", type="string", example="Atomic Habits"),
- *             @OA\Property(property="author", type="string", example="James Clear"),
- *             @OA\Property(property="category_id", type="integer", example=1)
- *         )
- *     ),
- *     @OA\Response(response=201, description="Buku berhasil ditambahkan")
- * )
-
- * @OA\Put(
- *     path="/api/books/{id}",
- *     summary="Perbarui data buku",
- *     tags={"Books"},
- *     @OA\Parameter(
- *         name="id",
- *         in="path",
- *         required=true,
- *         description="ID buku",
- *         @OA\Schema(type="integer")
- *     ),
- *     @OA\RequestBody(
- *         required=true,
- *         @OA\JsonContent(
- *             @OA\Property(property="title", type="string", example="Judul Baru"),
- *             @OA\Property(property="author", type="string", example="Penulis Baru")
- *         )
- *     ),
- *     @OA\Response(response=200, description="Buku berhasil diperbarui")
- * )
-
- * @OA\Delete(
- *     path="/api/books/{id}",
- *     summary="Hapus buku",
- *     tags={"Books"},
- *     @OA\Parameter(
- *         name="id",
- *         in="path",
- *         required=true,
- *         description="ID buku",
- *         @OA\Schema(type="integer")
- *     ),
- *     @OA\Response(response=200, description="Buku berhasil dihapus")
- * )
- */
-
     private function isAdmin(Request $request)
     {
         return $request->user()->role === 'admin';
@@ -74,7 +14,9 @@ class BookModelController extends Controller
 
     public function index()
     {
-        $books = BookModel::all(); 
+        $books = BookModel::with('category')->get(); 
+        // $books = BookModel::all();
+
         return response()->json([
             'status' => true,
             'message' => 'Ini adalah data semua buku!',
