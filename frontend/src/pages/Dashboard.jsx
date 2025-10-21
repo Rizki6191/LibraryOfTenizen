@@ -36,7 +36,7 @@ const categories = [
 ];
 
 const allMenuItems = [
-    { id: 'home', name: 'Beranda', icon: Home, roles: ['admin', 'member', 'guest'] },
+    { id: 'home', name: 'Beranda', icon: Home, roles: ['member', 'guest'] },
     { id: 'books', name: 'Daftar Buku', icon: Book, roles: ['admin', 'member', 'guest'] },
     { id: 'borrowing', name: 'Peminjaman', icon: List, roles: ['admin', 'member'] }
 ];
@@ -1555,11 +1555,11 @@ const Dashboard = () => {
                                                         Login untuk Meminjam
                                                     </button>
                                                 )}
-                                                {userData.role === 'admin' && (
+                                                {/* {userData.role === 'admin' && (
                                                     <div className="text-center text-gray-500 py-2">
                                                         Admin tidak dapat meminjam buku
                                                     </div>
-                                                )}
+                                                )} */}
                                             </>
                                         )}
                                     </div>
