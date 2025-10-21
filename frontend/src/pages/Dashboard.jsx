@@ -12,28 +12,31 @@ const BOOKS_API_URL = `${API_BASE_URL}/books`;
 const USER_PROFILE_URL = `${API_BASE_URL}/user`;
 const BORROWING_API_URL = `${API_BASE_URL}/borrowing`;
 const ALL_BORROWINGS_URL = `${API_BASE_URL}/borrowing`;
-const CATEGORIES_API_URL = `${API_BASE_URL}/categories`; // ✅ Ditambahkan
+const CATEGORIES_API_URL = `${API_BASE_URL}/categories`;
 
-// --- Daftar Kategori ---
-// `id` adalah angka sesuai `category_id` di database.
-// Ini hanya untuk UI, data sebenarnya diambil dari API.
-const categories = [
-    { id: 'all', name: 'Semua', icon: BookOpen },
-    { id: 1, name: 'Romansa', icon: Heart },
-    { id: 2, name: 'Self-Help', icon: GraduationCap },
-    { id: 3, name: 'Biografi', icon: Users },
-    { id: 4, name: 'Fantasi', icon: Book },
-    { id: 5, name: 'Fiksi Ilmiah', icon: Search },
-    { id: 6, name: 'Misteri', icon: AlertCircle },
-    { id: 7, name: 'Thriller', icon: TrendingUp },
-    { id: 8, name: 'Horor', icon: AlertCircle },
-    { id: 9, name: 'Sejarah', icon: BookOpen },
-    { id: 10, name: 'Bisnis', icon: TrendingUp },
-    { id: 11, name: 'Kesehatan & Kebugaran', icon: Users },
-    { id: 12, name: 'Anak-Anak', icon: Book },
-    { id: 14, name: 'Drama', icon: Heart },
-    { id: 15, name: 'Slice of Life', icon: BookOpen },
-];
+// Ikon default untuk kategori
+const DEFAULT_CATEGORY_ICONS = {
+  'all': BookOpen,
+  'default': BookOpen
+};
+
+// Mapping nama kategori ke ikon (fallback jika tidak ada ikon dari API)
+const CATEGORY_ICON_MAPPING = {
+  'Romansa': Heart,
+  'Self-Help': GraduationCap,
+  'Biografi': Users,
+  'Fantasi': Book,
+  'Fiksi Ilmiah': Search,
+  'Misteri': AlertCircle,
+  'Thriller': TrendingUp,
+  'Horor': AlertCircle,
+  'Sejarah': BookOpen,
+  'Bisnis': TrendingUp,
+  'Kesehatan & Kebugaran': Users,
+  'Anak-Anak': Book,
+  'Drama': Heart,
+  'Slice of Life': BookOpen
+};
 
 const allMenuItems = [
     { id: 'home', name: 'Beranda', icon: Home, roles: ['member', 'guest'] },
@@ -72,7 +75,7 @@ const Dashboard = () => {
         title: '',
         author: '',
         description: '',
-        category_id: 1, // Default ke Romansa (ID 1)
+        category_id: 1, // Default ke kategori pertama
         stock: 1,
         published_year: new Date().getFullYear(),
         isbn: ''
@@ -80,10 +83,13 @@ const Dashboard = () => {
     // State untuk Data
     const [books, setBooks] = useState([]);
     const [borrowings, setBorrowings] = useState([]);
+    const [categories, setCategories] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isLoadingBorrowings, setIsLoadingBorrowings] = useState(false);
+    const [isLoadingCategories, setIsLoadingCategories] = useState(false);
     const [isError, setIsError] = useState(null);
     const [isSaving, setIsSaving] = useState(false);
+    
     // State user data yang akan diisi dari API
     const [userData, setUserData] = useState({ 
         name: 'Loading...', 
@@ -97,6 +103,68 @@ const Dashboard = () => {
     });
 
     const menuItems = allMenuItems.filter(item => item.roles.includes(userData.role));
+
+    // Fungsi untuk mendapatkan ikon kategori
+    const getCategoryIcon = (categoryName) => {
+        return CATEGORY_ICON_MAPPING[categoryName] || DEFAULT_CATEGORY_ICONS.default;
+    };
+
+    // Fungsi untuk memproses data kategori dari API
+    const processCategoriesData = (apiCategories) => {
+        // Tambahkan kategori "Semua" di awal
+        const allCategory = {
+            id: 'all',
+            name: 'Semua',
+            icon: DEFAULT_CATEGORY_ICONS.all
+        };
+
+        // Proses kategori dari API
+        const processedCategories = apiCategories.map(cat => ({
+            id: cat.id,
+            name: cat.name,
+            icon: getCategoryIcon(cat.name),
+            ...cat // Sisakan data asli dari API jika ada
+        }));
+
+        return [allCategory, ...processedCategories];
+    };
+
+    // Fungsi untuk mengambil data kategori dari API
+    const fetchCategories = useCallback(async () => {
+        setIsLoadingCategories(true);
+        try {
+            const token = localStorage.getItem('userToken');
+            const response = await axios.get(CATEGORIES_API_URL, {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    Accept: 'application/json'
+                }
+            });
+            
+            if (response.data && Array.isArray(response.data.data)) {
+                const processedCategories = processCategoriesData(response.data.data);
+                setCategories(processedCategories);
+                
+                // Set default category_id untuk form baru ke kategori pertama (selain "all")
+                if (processedCategories.length > 1) {
+                    setNewBookData(prev => ({
+                        ...prev,
+                        category_id: processedCategories[1].id // Kategori pertama setelah "all"
+                    }));
+                }
+            } else {
+                console.error("Invalid categories API response format:", response.data);
+                // Fallback ke kategori default jika API error
+                setCategories(processCategoriesData([]));
+            }
+        } catch (error) {
+            console.error("Error fetching categories:", error);
+            // Fallback ke kategori default jika API error
+            setCategories(processCategoriesData([]));
+        } finally {
+            setIsLoadingCategories(false);
+        }
+    }, []);
 
     // Fungsi untuk mendapatkan data user dari token
     const fetchUserData = useCallback(async () => {
@@ -219,7 +287,6 @@ const Dashboard = () => {
                 }
             });
             
-            // ✅ Perbaikan: Tangani kasus di mana API tidak mengembalikan data
             if (!response.data || !Array.isArray(response.data.data)) {
                 console.error("Invalid API response format:", response.data);
                 setIsError("Format data API tidak valid. Pastikan backend mengembalikan { data: [...] }.");
@@ -229,14 +296,18 @@ const Dashboard = () => {
 
             const apiBooks = response.data.data;
             const processedBooks = apiBooks.map((book, index) => {
-                // ✅ Ambil nama kategori dari relasi jika tersedia, jika tidak, gunakan ID
+                // Ambil nama kategori dari relasi jika tersedia, jika tidak, gunakan ID
                 let categoryName = 'Unknown';
+                let categoryId = null;
+
                 if (book.category && book.category.name) {
                     categoryName = book.category.name;
+                    categoryId = book.category.id;
                 } else if (book.category_id) {
-                    // Fallback: Cari nama berdasarkan category_id
+                    // Fallback: Cari nama berdasarkan category_id dari state categories
                     const cat = categories.find(c => c.id === book.category_id);
                     categoryName = cat ? cat.name : `Kategori ${book.category_id}`;
+                    categoryId = book.category_id;
                 }
 
                 return {
@@ -246,9 +317,9 @@ const Dashboard = () => {
                     description: book.description || `Buku ${book.title} karya ${book.author}`,
                     cover: getBookCoverStyle(book.id), 
                     category: categoryName, // ✅ Gunakan nama yang sudah diproses
+                    category_id: categoryId,
                     featured: index < 3,
                     stock: book.stock || 0,
-                    category_id: book.category_id,
                     published_year: book.published_year,
                     isbn: book.isbn,
                     created_at: book.created_at,
@@ -273,9 +344,19 @@ const Dashboard = () => {
         } finally {
             setIsLoading(false);
         }
-    }, [fetchUserData]);
+    }, [fetchUserData, categories]);
 
-    useEffect(() => { fetchBooks(); }, [fetchBooks]);
+    // Load data saat komponen mount
+    useEffect(() => {
+        fetchCategories();
+    }, [fetchCategories]);
+
+    useEffect(() => { 
+        if (categories.length > 0) {
+            fetchBooks(); 
+        }
+    }, [fetchBooks, categories]);
+
     useEffect(() => {
         if (activeMenu === 'borrowing' && userData.role !== 'guest') {
             fetchBorrowings();
@@ -512,7 +593,7 @@ const Dashboard = () => {
                 title: '',
                 author: '',
                 description: '',
-                category_id: 1,
+                category_id: categories.length > 1 ? categories[1].id : 1,
                 stock: 1,
                 published_year: new Date().getFullYear(),
                 isbn: ''
@@ -652,11 +733,13 @@ const Dashboard = () => {
 
     // Helper untuk rendering konten berdasarkan menu yang aktif
     const renderContent = () => {
-        if (isLoading && activeMenu !== 'borrowing') {
+        if ((isLoading && activeMenu !== 'borrowing') || isLoadingCategories) {
             return (
                 <div className="text-center p-12 bg-white rounded-3xl shadow-xl">
                     <div className="animate-spin inline-block w-8 h-8 border-4 border-t-4 border-amber-500 border-opacity-25 rounded-full mb-4"></div>
-                    <p className="text-lg font-medium text-gray-700">Memuat Buku...</p>
+                    <p className="text-lg font-medium text-gray-700">
+                        {isLoadingCategories ? 'Memuat Kategori...' : 'Memuat Buku...'}
+                    </p>
                 </div>
             );
         }
@@ -721,38 +804,49 @@ const Dashboard = () => {
                                 ))}
                             </div>
                         </div>
-                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 lg:gap-6">
-                            {filteredBooks.length > 0 ? (
-                                filteredBooks.map(book => (
-                                    <div 
-                                        key={book.id} 
-                                        className="group cursor-pointer"
-                                        onClick={() => handleBookClick(book)}
-                                    >
+                        
+                        {/* Tampilan Buku Horizontal dengan Scroll */}
+                        <div>
+                            <div 
+                                className="flex gap-4 lg:gap-6 overflow-x-auto pb-6 scroll-smooth"
+                                style={{ 
+                                    scrollbarWidth: 'none', 
+                                    msOverflowStyle: 'none',
+                                    scrollBehavior: 'smooth'
+                                }}
+                            >
+                                {filteredBooks.length > 0 ? (
+                                    filteredBooks.map(book => (
                                         <div 
-                                            className="rounded-xl shadow-md aspect-[3/4] p-3 lg:p-4 flex flex-col justify-end transform group-hover:scale-105 group-hover:shadow-xl transition-all duration-300"
-                                            style={{ background: book.cover }}
+                                            key={book.id} 
+                                            className="flex-shrink-0 w-48 group cursor-pointer"
+                                            onClick={() => handleBookClick(book)}
                                         >
-                                            <div className="text-white">
-                                                <p className="text-xs opacity-90 mb-1 truncate">{book.author}</p>
-                                                <h4 className="text-sm font-bold line-clamp-2 mb-1">{book.title}</h4>
-                                                <div className="flex justify-between items-center text-xs opacity-70">
-                                                    <span>Stok: {book.stock}</span>
-                                                    <span className="capitalize">{book.category}</span>
+                                            <div 
+                                                className="rounded-xl shadow-md aspect-[3/4] p-4 flex flex-col justify-end transform group-hover:scale-105 group-hover:shadow-xl transition-all duration-300"
+                                                style={{ background: book.cover }}
+                                            >
+                                                <div className="text-white">
+                                                    <p className="text-xs opacity-90 mb-1 truncate">{book.author}</p>
+                                                    <h4 className="text-sm font-bold line-clamp-2 mb-1">{book.title}</h4>
+                                                    <div className="flex justify-between items-center text-xs opacity-70">
+                                                        <span>Stok: {book.stock}</span>
+                                                        <span className="capitalize truncate max-w-16">{book.category}</span>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
+                                    ))
+                                ) : (
+                                    <div className="w-full text-center py-12">
+                                        <Book className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                                        <p className="text-gray-500 text-lg mb-2">Tidak ada buku ditemukan</p>
+                                        <p className="text-gray-400 text-sm">
+                                            {searchQuery ? `Untuk pencarian "${searchQuery}"` : `Untuk kategori ${categories.find(c => c.id === selectedCategory)?.name || 'yang dipilih'}`}
+                                        </p>
                                     </div>
-                                ))
-                            ) : (
-                                <div className="col-span-full text-center py-12">
-                                    <Book className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                                    <p className="text-gray-500 text-lg mb-2">Tidak ada buku ditemukan</p>
-                                    <p className="text-gray-400 text-sm">
-                                        {searchQuery ? `Untuk pencarian "${searchQuery}"` : `Untuk kategori ${categories.find(c => c.id === selectedCategory)?.name || 'yang dipilih'}`}
-                                    </p>
-                                </div>
-                            )}
+                                )}
+                            </div>
                         </div>
                     </div>
                 </>
@@ -762,6 +856,7 @@ const Dashboard = () => {
         if (activeMenu === 'home') {
             const featuredBooks = books.filter(b => b.featured).slice(0, 4); 
             const interestingBooks = books.filter(b => !b.featured);
+            
             return (
                 <>
                     {isError && (
@@ -812,47 +907,57 @@ const Dashboard = () => {
                             </button>
                         </div>
                     </div>
-                    <h3 className="text-xl font-semibold mb-4" style={{ color: '#442D1C' }}>Pilihan Unggulan ({featuredBooks.length})</h3>
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 lg:gap-6 mb-8">
-                        {featuredBooks.length > 0 ? (
-                            featuredBooks.map(book => (
-                                <div 
-                                    key={book.id} 
-                                    className="group cursor-pointer"
-                                    onClick={() => handleBookClick(book)}
-                                >
+                    
+                    {/* Pilihan Unggulan - Horizontal */}
+                    <div className="bg-white rounded-3xl shadow-xl p-6 lg:p-8 mb-8">
+                        <div className="flex items-center justify-between mb-6">
+                            <h3 className="text-xl font-semibold" style={{ color: '#442D1C' }}>Pilihan Unggulan ({featuredBooks.length})</h3>
+                        </div>
+                        <div className="flex gap-4 lg:gap-6 overflow-x-auto pb-4 scroll-smooth">
+                            {featuredBooks.length > 0 ? (
+                                featuredBooks.map(book => (
                                     <div 
-                                        className="rounded-2xl shadow-lg aspect-[3/4] p-4 lg:p-6 flex flex-col justify-end transform group-hover:scale-105 group-hover:shadow-2xl transition-all duration-300"
-                                        style={{ background: book.cover }}
+                                        key={book.id} 
+                                        className="flex-shrink-0 w-56 group cursor-pointer"
+                                        onClick={() => handleBookClick(book)}
                                     >
-                                        <div className="text-white">
-                                            <p className="text-xs lg:text-sm opacity-90 mb-1">{book.author}</p>
-                                            <h3 className="text-base lg:text-xl font-bold">{book.title}</h3>
+                                        <div 
+                                            className="rounded-2xl shadow-lg aspect-[3/4] p-6 flex flex-col justify-end transform group-hover:scale-105 group-hover:shadow-2xl transition-all duration-300"
+                                            style={{ background: book.cover }}
+                                        >
+                                            <div className="text-white">
+                                                <p className="text-sm opacity-90 mb-1">{book.author}</p>
+                                                <h3 className="text-lg font-bold">{book.title}</h3>
+                                            </div>
                                         </div>
                                     </div>
+                                ))
+                            ) : (
+                                <div className="w-full text-center py-8">
+                                    <Book className="w-12 h-12 text-gray-300 mx-auto mb-2" />
+                                    <p className="text-gray-500">Tidak ada buku unggulan ditemukan.</p>
                                 </div>
-                            ))
-                        ) : (
-                            <div className="col-span-full text-center py-8">
-                                <Book className="w-12 h-12 text-gray-300 mx-auto mb-2" />
-                                <p className="text-gray-500">Tidak ada buku unggulan ditemukan.</p>
-                            </div>
-                        )}
+                            )}
+                        </div>
                     </div>
+                    
+                    {/* Mungkin Menarik - Horizontal */}
                     <div className="bg-white rounded-3xl shadow-xl p-6 lg:p-8">
-                        <h3 className="text-2xl lg:text-3xl font-bold mb-4 lg:mb-6 leading-tight" style={{ color: '#442D1C' }}>
-                            MUNGKIN MENARIK<br />BAGI ANDA ({interestingBooks.length})
-                        </h3>
-                        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 lg:gap-6">
+                        <div className="flex items-center justify-between mb-6">
+                            <h3 className="text-2xl lg:text-3xl font-bold leading-tight" style={{ color: '#442D1C' }}>
+                                MUNGKIN MENARIK BAGI ANDA ({interestingBooks.length})
+                            </h3>
+                        </div>
+                        <div className="flex gap-4 lg:gap-6 overflow-x-auto pb-4 scroll-smooth">
                             {interestingBooks.length > 0 ? (
                                 interestingBooks.map(book => (
                                     <div 
                                         key={book.id} 
-                                        className="group cursor-pointer"
+                                        className="flex-shrink-0 w-48 group cursor-pointer"
                                         onClick={() => handleBookClick(book)}
                                     >
                                         <div 
-                                            className="rounded-xl shadow-md aspect-[3/4] p-3 lg:p-4 flex flex-col justify-end transform group-hover:scale-105 group-hover:shadow-xl transition-all duration-300"
+                                            className="rounded-xl shadow-md aspect-[3/4] p-4 flex flex-col justify-end transform group-hover:scale-105 group-hover:shadow-xl transition-all duration-300"
                                             style={{ background: book.cover }}
                                         >
                                             <div className="text-white">
@@ -863,7 +968,7 @@ const Dashboard = () => {
                                     </div>
                                 ))
                             ) : (
-                                <div className="col-span-full text-center py-8">
+                                <div className="w-full text-center py-8">
                                     <Book className="w-12 h-12 text-gray-300 mx-auto mb-2" />
                                     <p className="text-gray-500">Tidak ada buku lain ditemukan.</p>
                                 </div>
@@ -1125,6 +1230,7 @@ const Dashboard = () => {
                     {renderContent()}
                 </main>
             </div>
+            
             {/* Modal Profil */}
             {showProfileModal && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -1210,6 +1316,7 @@ const Dashboard = () => {
                     </div>
                 </div>
             )}
+            
             {/* Modal Detail User (untuk admin) */}
             {selectedUser && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -1288,6 +1395,7 @@ const Dashboard = () => {
                     </div>
                 </div>
             )}
+            
             {/* Modal Detail Buku */}
             {selectedBook && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -1555,11 +1663,6 @@ const Dashboard = () => {
                                                         Login untuk Meminjam
                                                     </button>
                                                 )}
-                                                {/* {userData.role === 'admin' && (
-                                                    <div className="text-center text-gray-500 py-2">
-                                                        Admin tidak dapat meminjam buku
-                                                    </div>
-                                                )} */}
                                             </>
                                         )}
                                     </div>
@@ -1569,6 +1672,7 @@ const Dashboard = () => {
                     </div>
                 </div>
             )}
+            
             {/* Modal Create Book */}
             {showCreateModal && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
