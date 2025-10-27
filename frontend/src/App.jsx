@@ -5,7 +5,6 @@ import Register from "./pages/Register";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 
-
 export default function App() {
   return (
     <>

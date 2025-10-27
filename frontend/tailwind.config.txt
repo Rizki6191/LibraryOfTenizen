@@ -1,0 +1,47 @@
+// /** @type {import('tailwindcss').Config} */
+// export default {
+//   content: [
+//     "./index.html",
+//     "./src/**/*.{js,ts,jsx,tsx}",
+//   ],
+//   theme: {
+//     extend: {
+//       colors: {
+//         primary: {
+//           50: '#fefaf6',
+//           100: '#fdf5ec',
+//           200: '#f8e6d1',
+//           300: '#f3d7b6',
+//           400: '#e8d1a7',
+//           500: '#c9a87a',
+//           600: '#a88454',
+//           700: '#7d613e',
+//           800: '#523e28',
+//           900: '#442d1c',
+//         }
+//       },
+//       fontFamily: {
+//         'inter': ['Inter', 'system-ui', 'sans-serif'],
+//       },
+//       animation: {
+//         'fade-in': 'fadeIn 0.8s ease-out',
+//         'wave-float': 'waveFloat 12s ease-in-out infinite',
+//         'logo-float': 'logoFloat 6s ease-in-out infinite',
+//         'card-slide': 'cardSlide 0.8s cubic-bezier(0.4, 0, 0.2, 1)',
+//         'slide-up': 'slideUp 0.6s ease-out',
+//       },
+//       keyframes: {
+//         fadeIn: {
+//           '0%': { opacity: '0', transform: 'translateY(20px)' },
+//           '100%': { opacity: '1', transform: 'translateY(0)' },
+//         }
+//       },
+//       boxShadow: {
+//         'soft': '0 20px 60px rgba(68, 45, 28, 0.15)',
+//         'medium': '0 10px 40px rgba(68, 45, 28, 0.2)',
+//         'hard': '0 8px 25px rgba(68, 45, 28, 0.3)',
+//       },
+//     },
+//   },
+//   plugins: [],
+// }

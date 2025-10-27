@@ -52,7 +52,7 @@ export const SEOHelmet = ({
 // Helmet untuk halaman Auth (Landing)
 export const AuthHelmet = () => (
   <SEOHelmet
-    title="iPush - Sistem Perpustakaan Digital | LibraryOfTeniizen"
+    title="LibraryOfTeniizen"
     description="Selamat datang di iPush, sistem perpustakaan digital untuk meminjam buku dengan mudah dan mengelola peminjaman dalam satu platform."
     keywords="perpustakaan digital, ipush, library system, peminjaman buku online, digital library indonesia"
     ogTitle="iPush - Perpustakaan Digital Modern"
@@ -64,7 +64,7 @@ export const AuthHelmet = () => (
 // Helmet untuk halaman Login
 export const LoginHelmet = () => (
   <SEOHelmet
-    title="Masuk - iPush Library | LibraryOfTeniizen"
+    title="Masuk | LibraryOfTeniizen"
     description="Masuk ke akun perpustakaan digital Anda untuk mengakses koleksi buku dan mengelola peminjaman."
     keywords="login perpustakaan, masuk library, login ipush, akses perpustakaan digital"
     ogTitle="Masuk ke Akun - iPush Library"
@@ -76,7 +76,7 @@ export const LoginHelmet = () => (
 // Helmet untuk halaman Register
 export const RegisterHelmet = () => (
   <SEOHelmet
-    title="Daftar Akun - iPush Library | LibraryOfTeniizen"
+    title="Daftar Akun | LibraryOfTeniizen"
     description="Daftarkan akun baru untuk mengakses perpustakaan digital dan mulai meminjam buku dengan mudah."
     keywords="daftar perpustakaan, registrasi library, daftar ipush, buat akun perpustakaan"
     ogTitle="Daftar Akun Baru - iPush Library"
@@ -88,10 +88,10 @@ export const RegisterHelmet = () => (
 // Helmet untuk halaman Dashboard
 export const DashboardHelmet = () => (
   <SEOHelmet
-    title="Dashboard - Digital Library Management | LibraryOfTeniizen"
+    title="Dashboard | LibraryOfTeniizen"
     description="Kelola koleksi perpustakaan Anda dengan dashboard yang efisien. Pantau status buku, anggota, dan peminjaman dalam satu tempat."
     keywords="dashboard perpustakaan, library management, kelola buku, statistik perpustakaan, manajemen library"
-    ogTitle="Dashboard - Digital Library Management"
+    ogTitle="Dashboard | LibraryOfTeniizen"
     ogDescription="Dashboard lengkap untuk mengelola perpustakaan digital Anda dengan efisien."
     canonical="https://libraryofteniizen.com/dashboard"
   />
