@@ -1,10 +1,35 @@
+![header](https://capsule-render.vercel.app/api?type=waving&height=300&color=6F4E37&text=Library%20Of%20Tenizen&section=header&reversal=false&fontColor=000000&fontSize=66)
+
 # 📚 LibraryOfTenizen
 Library Of Tenizen (LOT) adalah platform perpustakaan digital modern yang dirancang khusus untuk lingkungan sekolah. Sistem ini menyediakan solusi komprehensif untuk manajemen perpustakaan dan peminjaman buku digital.
 
-## FITUR
-Coming soon...
+## 🛠️Fitur
+- Member :
+    - Register = Siswa/i dapat membuat akun yang akan terdaftar sebagai member supaya dapat melihat-lihat buku yang ingin dipinjam di perpustakaan
+    - Login = Siswa/i dapat Login ke dalam akun yang iya buat untuk dapat masuk ke Library Of Tenizen
+    - Searching = Siswa/i dapat mencari buku dengan genre atau tema yang ia inginkan
+    - List Buku = Siswa/i dapat melihat buku apa saja yang tersedia
+    - Status Buku = Siswa/i dapat melihat apakah buku tersedia atau tidak
+    - Detail Buku = Siswa/i dapat melihat apakah buku yang ia ingin pinjam sesuai dengan keinginannya serta dapat melihat detail lain dari Buku
+    - Category = Siswa/i dapat melihat buku yang direkomendasikan sesuai dengan kategori atau tema buku tersebut
+    - Popular =  Siswa/i dapat melihat buku apa saja yang sering dipinjam oleh siswa lain
+
+ -Admin :
+     - Kontrol Member = Admin dapat mengelola akun member yang dibuat
+     - List Buku = Admin dapat melihat buku apa saja yang tersedia 
+     - Status Buku = Admin dapat melihat apakah buku tersedia atau tidak
+     - Detail Buku = Admin dapat melihat detail lain dari Buku, Serta dapat mengubahnya
+     - Kontrol Daftar Buku = Admin dapat mengelola atau mengubah Daftar Buku
+     - Kontrol Peminjaman = Admin dapat mengontrol serta mengelola peminjaman buku
+     
 
 ## 🛠️ Teknologi yang Digunakan
+-
+-
+-
+-
+-
+
 ### Frontend
 - React.js 18
 - Vite
@@ -13,7 +38,8 @@ Coming soon...
 - Axios
 
 ### Backend
-Coming soon...
+- PHP(Laravel)
+- Database (MySQL)
 
 ## 🚀 Panduan Instalasi & Penggunaan
 ### 🖥️ Instalasi & Menjalankan Frontend
