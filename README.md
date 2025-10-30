@@ -24,11 +24,6 @@ Library Of Tenizen (LOT) adalah platform perpustakaan digital modern yang diranc
      
 
 ## 🛠️ Teknologi yang Digunakan
--
--
--
--
--
 
 ### Frontend
 - React.js 18
