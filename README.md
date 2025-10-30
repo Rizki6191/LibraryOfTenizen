@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 ![header](https://capsule-render.vercel.app/api?type=waving&height=300&color=6F4E37&text=Library%20Of%20Tenizen&section=header&reversal=false&fontColor=000000&fontSize=66)
 
 # 📚 LibraryOfTenizen
