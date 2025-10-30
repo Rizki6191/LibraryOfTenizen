@@ -63,8 +63,6 @@ Library Of Tenizen (LOT) adalah platform perpustakaan digital modern yang diranc
 =======
 # LibraryOfTenizen
 Library Of Tenizen (LOT) adalah platform perpustakaan digital modern yang dirancang khusus untuk lingkungan sekolah. Sistem ini menyediakan solusi komprehensif untuk manajemen perpustakaan, peminjaman buku digital, dan pengalaman membaca yang lebih interaktif bagi siswa dan tenaga pendidikan.
-## FITUR
->>>>>>> 2936452 (benerin frontend)
 
 ## LINK FIGMA
     https://www.figma.com/design/W53Vmh77YxJOwXaeXIWGwb/Untitled?node-id=0-1&p=f&t=xATjnpj9Te8KRbSR-0
