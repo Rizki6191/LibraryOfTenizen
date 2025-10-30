@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Edit, Trash2, RotateCcw, Save, Hash, CalendarDays, Book, Clock, CheckCircle, AlertCircle } from 'lucide-react';
+import { Edit, Trash2, RotateCcw, Save, Hash, CalendarDays, Book, Clock, CheckCircle, AlertCircle } from 'lucide-react';
 
 const BookModal = ({
     selectedBook,
@@ -32,7 +32,7 @@ const BookModal = ({
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="bg-white rounded-3xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
                 <div className="p-6 border-b border-gray-100">
                     <div className="flex items-center justify-between">
                         <h2 className="text-2xl font-bold" style={{ color: '#442D1C' }}>
@@ -66,20 +66,15 @@ const BookModal = ({
                                     <RotateCcw className="w-5 h-5" />
                                 </button>
                             )}
-                            <button 
-                                onClick={handleCloseBookModal}
-                                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                            >
-                                <X className="w-5 h-5 text-gray-500" />
-                            </button>
                         </div>
                     </div>
                 </div>
                 <div className="p-6">
-                    <div className="flex flex-col lg:flex-row gap-6">
+                    <div className="flex flex-col lg:flex-row gap-8">
+                        {/* Gambar di kiri */}
                         <div className="flex-shrink-0">
                             <div 
-                                className="rounded-2xl shadow-lg w-48 h-64 flex items-center justify-center mx-auto lg:mx-0"
+                                className="rounded-2xl shadow-lg w-56 h-72 flex items-center justify-center mx-auto lg:mx-0"
                                 style={{ background: selectedBook.cover }}
                             >
                                 <div className="text-white text-center p-4">
@@ -88,6 +83,8 @@ const BookModal = ({
                                 </div>
                             </div>
                         </div>
+                        
+                        {/* Konten di kanan */}
                         <div className="flex-1">
                             {isEditing ? (
                                 <div className="space-y-4">
@@ -166,46 +163,48 @@ const BookModal = ({
                                 </div>
                             ) : (
                                 <>
-                                    <h3 className="text-2xl font-bold mb-2" style={{ color: '#442D1C' }}>{selectedBook.title}</h3>
-                                    <p className="text-gray-600 mb-4">oleh {selectedBook.author}</p>
-                                    <div className="mb-6" onDoubleClick={handleDoubleClickEdit}>
-                                        <h4 className="font-semibold mb-2" style={{ color: '#442D1C' }}>Sinopsis</h4>
-                                        <p className="text-gray-700 leading-relaxed">{selectedBook.description}</p>
+                                    {/* Judul dan Penulis */}
+                                    <h1 className="text-3xl font-bold mb-2" style={{ color: '#442D1C' }}>{selectedBook.title}</h1>
+                                    <h2 className="text-xl text-gray-600 mb-6">oleh: {selectedBook.author}</h2>
+
+                                    {/* Sinopsis */}
+                                    <div className="mb-8" onDoubleClick={handleDoubleClickEdit}>
+                                        <h3 className="text-xl font-semibold mb-3" style={{ color: '#442D1C' }}>Sinopsis</h3>
+                                        <p className="text-gray-700 leading-relaxed text-justify">{selectedBook.description}</p>
                                         {userData.role === 'admin' && (
-                                            <p className="text-xs text-gray-400 mt-1">Double click untuk edit</p>
+                                            <p className="text-xs text-gray-400 mt-2">Double click untuk edit</p>
                                         )}
                                     </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                                        <div className="flex items-center gap-3">
-                                            <Hash className="w-4 h-4 text-amber-600" />
+
+                                    {/* Garis pemisah */}
+                                    <div className="border-t border-gray-300 my-6"></div>
+
+                                    {/* Informasi Buku dalam 2 kolom */}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                                        <div className="space-y-4">
                                             <div>
-                                                <p className="text-sm text-gray-500">Kategori</p>
-                                                <p className="font-semibold capitalize">{selectedBook.category}</p>
+                                                <h4 className="font-semibold mb-2" style={{ color: '#442D1C' }}>Kategori</h4>
+                                                <p className="text-gray-700 capitalize">{selectedBook.category}</p>
+                                            </div>
+                                            <div>
+                                                <h4 className="font-semibold mb-2" style={{ color: '#442D1C' }}>ISBN</h4>
+                                                <p className="text-gray-700">{selectedBook.isbn || 'Tidak Tersedia'}</p>
                                             </div>
                                         </div>
-                                        <div className="flex items-center gap-3">
-                                            <CalendarDays className="w-4 h-4 text-amber-600" />
+                                        <div className="space-y-4">
                                             <div>
-                                                <p className="text-sm text-gray-500">Tahun Terbit</p>
-                                                <p className="font-semibold">{selectedBook.published_year || 'Tidak diketahui'}</p>
+                                                <h4 className="font-semibold mb-2" style={{ color: '#442D1C' }}>Tahun Terbit</h4>
+                                                <p className="text-gray-700">{selectedBook.published_year || 'Tidak diketahui'}</p>
                                             </div>
-                                        </div>
-                                        <div className="flex items-center gap-3">
-                                            <Book className="w-4 h-4 text-amber-600" />
                                             <div>
-                                                <p className="text-sm text-gray-500">ISBN</p>
-                                                <p className="font-semibold">{selectedBook.isbn || 'Tidak tersedia'}</p>
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-3">
-                                            <Clock className="w-4 h-4 text-amber-600" />
-                                            <div>
-                                                <p className="text-sm text-gray-500">Ditambahkan</p>
-                                                <p className="font-semibold">{formatDate(selectedBook.created_at)}</p>
+                                                <h4 className="font-semibold mb-2" style={{ color: '#442D1C' }}>Ditambahkan</h4>
+                                                <p className="text-gray-700">{formatDate(selectedBook.created_at)}</p>
                                             </div>
                                         </div>
                                     </div>
-                                    <div className={`flex items-center gap-3 p-4 rounded-xl mb-6 ${
+
+                                    {/* Status Ketersediaan */}
+                                    <div className={`flex items-center gap-3 p-4 rounded-xl mb-8 ${
                                         selectedBook.stock > 0 
                                             ? 'bg-green-50 border border-green-200' 
                                             : 'bg-red-50 border border-red-200'
@@ -230,6 +229,8 @@ const BookModal = ({
                                     </div>
                                 </>
                             )}
+                            
+                            {/* Tombol Aksi */}
                             <div className="flex gap-3">
                                 {isEditing ? (
                                     <>

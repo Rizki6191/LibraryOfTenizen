@@ -50,34 +50,43 @@ const BooksContent = ({
                 </div>
             )}
             <div className="bg-white rounded-3xl shadow-xl p-6 lg:p-8">
-                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6">
-                    <h2 className="text-2xl lg:text-3xl font-bold mb-4 lg:mb-0" style={{ color: '#442D1C' }}>
+                {/* Baris 1: Judul */}
+                <div className="mb-6">
+                    <h2 className="text-2xl lg:text-3xl font-bold" style={{ color: '#442D1C' }}>
                         Semua Buku ({filteredBooks.length})
                     </h2>
-                    <div className="flex flex-col lg:flex-row gap-4">
-                        <div className="w-full lg:w-64">
-                            <div className="relative">
-                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                                <input
-                                    type="text"
-                                    placeholder="Cari judul atau penulis..."
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="w-full pl-10 pr-4 py-2 rounded-full bg-gray-50 border border-gray-200 focus:border-amber-400 focus:bg-white transition-all outline-none text-sm"
-                                />
-                            </div>
+                </div>
+
+                {/* Baris 2: Search Input */}
+                <div className="mb-4">
+                    <div className="w-full max-w-md">
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                            <input
+                                type="text"
+                                placeholder="Cari judul atau penulis..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="w-full pl-10 pr-4 py-2 rounded-full bg-gray-50 border border-gray-200 focus:border-amber-400 focus:bg-white transition-all outline-none text-sm"
+                            />
                         </div>
-                        {userData.role === 'admin' && (
-                            <button
-                                onClick={() => setShowCreateModal(true)}
-                                className="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-full font-semibold hover:bg-green-600 transition-colors"
-                            >
-                                <Plus className="w-4 h-4" />
-                                <span>Tambah Buku</span>
-                            </button>
-                        )}
                     </div>
                 </div>
+
+                {/* Baris 3: Tombol Tambah Buku */}
+                {userData.role === 'admin' && (
+                    <div className="mb-6">
+                        <button
+                            onClick={() => setShowCreateModal(true)}
+                            className="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-full font-semibold hover:bg-green-600 transition-colors"
+                        >
+                            <Plus className="w-4 h-4" />
+                            <span>Tambah Buku</span>
+                        </button>
+                    </div>
+                )}
+
+                {/* Baris 4: Kategori */}
                 <div className="mb-6">
                     <div className="flex gap-2 overflow-x-auto pb-4" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                         {categories.map(cat => (
@@ -91,7 +100,6 @@ const BooksContent = ({
                                 }`}
                                 style={selectedCategory === cat.id ? { background: 'linear-gradient(90deg, #E8D1A7, #442D1C)' } : {}}
                             >
-                                {/* Sementara hapus icon dulu */}
                                 <span>{cat.name}</span>
                             </button>
                         ))}
