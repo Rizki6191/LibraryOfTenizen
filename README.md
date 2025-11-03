@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 ![header](https://capsule-render.vercel.app/api?type=waving&height=300&color=6F4E37&text=Library%20Of%20Tenizen&section=header&reversal=false&fontColor=000000&fontSize=66)
 
 # 📚 LibraryOfTenizen
@@ -60,7 +59,7 @@ Library Of Tenizen (LOT) adalah platform perpustakaan digital modern yang diranc
     php artisan migrate
     php artisan serve
     # Akses http://localhost:8000
-=======
+
 # LibraryOfTenizen
 Library Of Tenizen (LOT) adalah platform perpustakaan digital modern yang dirancang khusus untuk lingkungan sekolah. Sistem ini menyediakan solusi komprehensif untuk manajemen perpustakaan, peminjaman buku digital, dan pengalaman membaca yang lebih interaktif bagi siswa dan tenaga pendidikan.
 
