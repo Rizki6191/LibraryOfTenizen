@@ -14,13 +14,13 @@ Library Of Tenizen (LOT) adalah platform perpustakaan digital modern yang diranc
     - Category = Siswa/i dapat melihat buku yang direkomendasikan sesuai dengan kategori atau tema buku tersebut
     - Popular =  Siswa/i dapat melihat buku apa saja yang sering dipinjam oleh siswa lain
 
- -Admin :
-     - Kontrol Member = Admin dapat mengelola akun member yang dibuat
-     - List Buku = Admin dapat melihat buku apa saja yang tersedia 
-     - Status Buku = Admin dapat melihat apakah buku tersedia atau tidak
-     - Detail Buku = Admin dapat melihat detail lain dari Buku, Serta dapat mengubahnya
-     - Kontrol Daftar Buku = Admin dapat mengelola atau mengubah Daftar Buku
-     - Kontrol Peminjaman = Admin dapat mengontrol serta mengelola peminjaman buku
+ - Admin :
+    - Kontrol Member = Admin dapat mengelola akun member yang dibuat
+    - List Buku = Admin dapat melihat buku apa saja yang tersedia 
+    - Status Buku = Admin dapat melihat apakah buku tersedia atau tidak
+    - Detail Buku = Admin dapat melihat detail lain dari Buku, Serta dapat mengubahnya
+    - Kontrol Daftar Buku = Admin dapat mengelola atau mengubah Daftar Buku
+    - Kontrol Peminjaman = Admin dapat mengontrol serta mengelola peminjaman buku
      
 
 ## 🛠️ Teknologi yang Digunakan
@@ -58,10 +58,7 @@ Library Of Tenizen (LOT) adalah platform perpustakaan digital modern yang diranc
 #### jalankan migration dan server
     php artisan migrate
     php artisan serve
-    # Akses http://localhost:8000
 
-# LibraryOfTenizen
-Library Of Tenizen (LOT) adalah platform perpustakaan digital modern yang dirancang khusus untuk lingkungan sekolah. Sistem ini menyediakan solusi komprehensif untuk manajemen perpustakaan, peminjaman buku digital, dan pengalaman membaca yang lebih interaktif bagi siswa dan tenaga pendidikan.
 
 ## LINK FIGMA
     https://www.figma.com/design/W53Vmh77YxJOwXaeXIWGwb/Untitled?node-id=0-1&p=f&t=xATjnpj9Te8KRbSR-0
