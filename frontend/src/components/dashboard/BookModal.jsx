@@ -70,23 +70,25 @@ const BookModal = ({
                     </div>
                 </div>
                 <div className="p-6">
-                    <div className="flex flex-col lg:flex-row gap-8">
-                        {/* Gambar di kiri */}
-                        <div className="flex-shrink-0">
+                    {/* CONTAINER UTAMA: Gambar Kiri (lg:w-1/4) dan Konten Kanan (lg:w-3/4) */}
+                    <div className="flex flex-wrap gap-6">
+                        {/* 1. Gambar di Kiri (Lebih besar di desktop: 1/4 lebar) */}
+                        <div className="flex-shrink-0 lg:w-1/4 flex justify-center lg:justify-start">
                             <div 
-                                className="rounded-2xl shadow-lg w-56 h-72 flex items-center justify-center mx-auto lg:mx-0"
+                                className="rounded-2xl shadow-lg w-40 h-52 flex items-center justify-center"
                                 style={{ background: selectedBook.cover }}
                             >
-                                <div className="text-white text-center p-4">
-                                    <p className="text-sm opacity-90 mb-2">{selectedBook.author}</p>
-                                    <h3 className="text-lg font-bold">{selectedBook.title}</h3>
+                                <div className="text-white text-center p-3">
+                                    <p className="text-xs opacity-90 mb-1">{selectedBook.author}</p>
+                                    <h3 className="text-sm font-bold leading-tight">{selectedBook.title}</h3>
                                 </div>
                             </div>
                         </div>
                         
-                        {/* Konten di kanan */}
-                        <div className="flex-1">
+                        {/* 2. Konten di Kanan (Lebih besar di desktop: 3/4 lebar) */}
+                        <div className="flex-1 lg:w-3/4">
                             {isEditing ? (
+                                // --- EDITING MODE (FORM) ---
                                 <div className="space-y-4">
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">Judul Buku</label>
@@ -115,7 +117,7 @@ const BookModal = ({
                                             className="w-full p-3 border border-gray-300 rounded-xl focus:border-amber-400 focus:ring-1 focus:ring-amber-400 outline-none"
                                         />
                                     </div>
-                                    <div className="grid grid-cols-2 gap-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-1">Kategori</label>
                                             <select
@@ -140,7 +142,7 @@ const BookModal = ({
                                             />
                                         </div>
                                     </div>
-                                    <div className="grid grid-cols-2 gap-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-1">Tahun Terbit</label>
                                             <input
@@ -160,15 +162,47 @@ const BookModal = ({
                                             />
                                         </div>
                                     </div>
+                                    <div className="flex gap-3 pt-4">
+                                        <button
+                                            onClick={handleCancelEdit}
+                                            className="flex-1 py-3 px-6 border border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition-colors"
+                                        >
+                                            Batal
+                                        </button>
+                                        <button
+                                            onClick={handleUpdateBook}
+                                            disabled={isSaving}
+                                            className={`flex-1 py-3 px-6 rounded-xl font-semibold transition-colors ${
+                                                isSaving
+                                                    ? 'bg-amber-300 text-white cursor-not-allowed'
+                                                    : 'bg-amber-500 text-white hover:bg-amber-600'
+                                            }`}
+                                        >
+                                            {isSaving ? (
+                                                <div className="flex items-center justify-center gap-2">
+                                                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                                                    <span>Menyimpan...</span>
+                                                </div>
+                                            ) : (
+                                                <div className="flex items-center justify-center gap-2">
+                                                    <Save className="w-5 h-5" />
+                                                    <span>Simpan Perubahan</span>
+                                                </div>
+                                            )}
+                                        </button>
+                                    </div>
                                 </div>
                             ) : (
-                                <>
+                                // --- DETAIL MODE (STATIC CONTENT) ---
+                                <div className="space-y-6">
                                     {/* Judul dan Penulis */}
-                                    <h1 className="text-3xl font-bold mb-2" style={{ color: '#442D1C' }}>{selectedBook.title}</h1>
-                                    <h2 className="text-xl text-gray-600 mb-6">oleh: {selectedBook.author}</h2>
+                                    <div>
+                                        <h1 className="text-3xl font-bold mb-2" style={{ color: '#442D1C' }}>{selectedBook.title}</h1>
+                                        <h2 className="text-xl text-gray-600">oleh: {selectedBook.author}</h2>
+                                    </div>
 
                                     {/* Sinopsis */}
-                                    <div className="mb-8" onDoubleClick={handleDoubleClickEdit}>
+                                    <div onDoubleClick={handleDoubleClickEdit}>
                                         <h3 className="text-xl font-semibold mb-3" style={{ color: '#442D1C' }}>Sinopsis</h3>
                                         <p className="text-gray-700 leading-relaxed text-justify">{selectedBook.description}</p>
                                         {userData.role === 'admin' && (
@@ -176,35 +210,32 @@ const BookModal = ({
                                         )}
                                     </div>
 
-                                    {/* Garis pemisah */}
-                                    <div className="border-t border-gray-300 my-6"></div>
-
-                                    {/* Informasi Buku dalam 2 kolom */}
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                                        <div className="space-y-4">
-                                            <div>
-                                                <h4 className="font-semibold mb-2" style={{ color: '#442D1C' }}>Kategori</h4>
-                                                <p className="text-gray-700 capitalize">{selectedBook.category}</p>
-                                            </div>
-                                            <div>
-                                                <h4 className="font-semibold mb-2" style={{ color: '#442D1C' }}>ISBN</h4>
-                                                <p className="text-gray-700">{selectedBook.isbn || 'Tidak Tersedia'}</p>
-                                            </div>
+                                    {/* Informasi Buku dalam 2x2 Grid (Sesuai Layout Gambar) */}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-y-6 gap-x-4">
+                                        {/* Kategori */}
+                                        <div>
+                                            <h4 className="font-semibold mb-2" style={{ color: '#442D1C' }}>Kategori</h4>
+                                            <p className="text-gray-700 capitalize">{selectedBook.category}</p>
                                         </div>
-                                        <div className="space-y-4">
-                                            <div>
-                                                <h4 className="font-semibold mb-2" style={{ color: '#442D1C' }}>Tahun Terbit</h4>
-                                                <p className="text-gray-700">{selectedBook.published_year || 'Tidak diketahui'}</p>
-                                            </div>
-                                            <div>
-                                                <h4 className="font-semibold mb-2" style={{ color: '#442D1C' }}>Ditambahkan</h4>
-                                                <p className="text-gray-700">{formatDate(selectedBook.created_at)}</p>
-                                            </div>
+                                        {/* Tahun Terbit */}
+                                        <div>
+                                            <h4 className="font-semibold mb-2" style={{ color: '#442D1C' }}>Tahun Terbit</h4>
+                                            <p className="text-gray-700">{selectedBook.published_year || 'Tidak diketahui'}</p>
+                                        </div>
+                                        {/* ISBN */}
+                                        <div>
+                                            <h4 className="font-semibold mb-2" style={{ color: '#442D1C' }}>ISBN</h4>
+                                            <p className="text-gray-700">{selectedBook.isbn || 'Tidak Tersedia'}</p>
+                                        </div>
+                                        {/* Ditambahkan */}
+                                        <div>
+                                            <h4 className="font-semibold mb-2" style={{ color: '#442D1C' }}>Ditambahkan</h4>
+                                            <p className="text-gray-700">{formatDate(selectedBook.created_at)}</p>
                                         </div>
                                     </div>
 
                                     {/* Status Ketersediaan */}
-                                    <div className={`flex items-center gap-3 p-4 rounded-xl mb-8 ${
+                                    <div className={`flex items-center gap-3 p-4 rounded-xl ${
                                         selectedBook.stock > 0 
                                             ? 'bg-green-50 border border-green-200' 
                                             : 'bg-red-50 border border-red-200'
@@ -227,39 +258,9 @@ const BookModal = ({
                                             </>
                                         )}
                                     </div>
-                                </>
-                            )}
-                            
-                            {/* Tombol Aksi */}
-                            <div className="flex gap-3">
-                                {isEditing ? (
-                                    <>
-                                        <button
-                                            onClick={handleCancelEdit}
-                                            className="flex-1 py-3 px-6 border border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition-colors"
-                                        >
-                                            Batal
-                                        </button>
-                                        <button
-                                            onClick={handleUpdateBook}
-                                            disabled={isSaving}
-                                            className="flex-1 py-3 px-6 bg-green-500 text-white rounded-xl font-semibold hover:bg-green-600 transition-colors flex items-center justify-center gap-2"
-                                        >
-                                            {isSaving ? (
-                                                <>
-                                                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-                                                    <span>Menyimpan...</span>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <Save className="w-4 h-4" />
-                                                    <span>Simpan</span>
-                                                </>
-                                            )}
-                                        </button>
-                                    </>
-                                ) : (
-                                    <>
+
+                                    {/* Tombol Aksi */}
+                                    <div className="flex gap-3 pt-4">
                                         <button
                                             onClick={handleCloseBookModal}
                                             className="flex-1 py-3 px-6 border border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition-colors"
@@ -297,9 +298,9 @@ const BookModal = ({
                                                 Login untuk Meminjam
                                             </button>
                                         )}
-                                    </>
-                                )}
-                            </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
