@@ -32,6 +32,11 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Borrowing
     Route::apiResource('borrowing', BorrowingController::class);
+    // Tambahkan route ini di routes/api.php
+    Route::get('/auto-return-test', function () {
+        $controller = new App\Http\Controllers\BorrowingController();
+        return $controller->autoReturnBooks();
+    });
     
     // Route khusus: Member mengembalikan buku
     Route::post('borrowing/{borrowing}/return', [BorrowingController::class, 'returnBook']);

@@ -15,8 +15,35 @@ class BorrowingController extends Controller
         return $user && $user->role === 'admin';
     }
 
+    // ✅ FUNGSI AUTO-RETURN: 7 hari setelah due_date 
+    private function checkAndAutoReturn()
+    {
+        $sevenDaysAgo = now()->subDays(7)->format('Y-m-d');
+        
+        $overdueBorrowings = Borrowing::with('book')
+            ->whereIn('status', ['borrowed', 'overdue'])
+            ->where('due_date', '<=', $sevenDaysAgo)
+            ->whereNull('returned_at')
+            ->get();
+
+        foreach ($overdueBorrowings as $borrowing) {
+            $borrowing->update([
+                'status' => 'returned',
+                'returned_at' => now()->format('Y-m-d'),
+                'updated_at' => now()
+            ]);
+
+            $book = $borrowing->book;
+            $book->stock += 1;
+            $book->save();
+        }
+    }
+
     public function index(Request $request)
     {
+        // ✅ JALANKAN AUTO-RETURN SETIAP KALI AKSES INDEKS
+        $this->checkAndAutoReturn();
+        
         $user = $request->user();
 
         if ($this->isAdmin($request)) {
@@ -62,7 +89,7 @@ class BorrowingController extends Controller
             ], 400);
         }
 
-        // ✅ PERBAIKAN 1: Cek apakah buku sedang dipinjam oleh SIAPAPUN
+        // Cek apakah buku sedang dipinjam oleh SIAPAPUN
         $bookBorrowed = Borrowing::where('book_id', $validated['book_id'])
             ->whereIn('status', ['borrowed', 'overdue'])
             ->count();
@@ -75,7 +102,7 @@ class BorrowingController extends Controller
             ], 400);
         }
 
-        // ✅ PERBAIKAN 2: Cek apakah user ini sudah pinjam buku yang sama
+        // Cek apakah user ini sudah pinjam buku yang sama
         $userBorrowingId = $this->isAdmin($request) ? $validated['user_id'] : $user->id;
         
         $userActiveBorrowing = Borrowing::where('user_id', $userBorrowingId)
@@ -90,19 +117,19 @@ class BorrowingController extends Controller
             ], 400);
         }
 
-        // Set default values
+        // Set default values - ✅ 7 HARI UNTUK PRODUCTION
         if (!$this->isAdmin($request)) {
             $validated['user_id'] = $user->id;
             $validated['borrowed_at'] = Carbon::now()->format('Y-m-d');
-            $validated['due_date'] = Carbon::now()->addDays(14)->format('Y-m-d');
+            $validated['due_date'] = Carbon::now()->addDays(7)->format('Y-m-d'); // ✅ 7 HARI
             $validated['status'] = 'borrowed';
         } else {
             $validated['borrowed_at'] = $validated['borrowed_at'] ?? Carbon::now()->format('Y-m-d');
-            $validated['due_date'] = $validated['due_date'] ?? Carbon::now()->addDays(14)->format('Y-m-d');
+            $validated['due_date'] = $validated['due_date'] ?? Carbon::now()->addDays(7)->format('Y-m-d'); // ✅ 7 HARI
             $validated['status'] = $validated['status'] ?? 'borrowed';
         }
 
-        // ✅ PERBAIKAN 3: Kurangi stok hanya jika status borrowed/overdue
+        // Kurangi stok hanya jika status borrowed/overdue
         if (in_array($validated['status'], ['borrowed', 'overdue'])) {
             $book->stock -= 1;
             $book->save();
@@ -176,6 +203,9 @@ class BorrowingController extends Controller
             
             $book->stock -= 1;
             $book->save();
+
+            // Reset returned_at jika kembali dipinjam
+            $validated['returned_at'] = null;
         }
 
         $borrowing->update($validated);
@@ -208,41 +238,6 @@ class BorrowingController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Berhasil menghapus data peminjaman'
-        ]);
-    }
-
-    public function returnBook(Request $request, Borrowing $borrowing)
-    {
-        $user = $request->user();
-
-        if (!$this->isAdmin($request) && $user->id !== $borrowing->user_id) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Ini bukan peminjaman Anda'
-            ], 403);
-        }
-
-        if ($borrowing->status === 'returned') {
-            return response()->json([
-                'success' => false,
-                'message' => 'Buku sudah dikembalikan sebelumnya'
-            ], 400);
-        }
-
-        $borrowing->update([
-            'status' => 'returned',
-            'returned_at' => Carbon::now()->format('Y-m-d')
-        ]);
-
-        // Kembalikan stok buku
-        $book = $borrowing->book;
-        $book->stock += 1;
-        $book->save();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Berhasil mengembalikan buku',
-            'data' => $borrowing->load(['book'])
         ]);
     }
 }
