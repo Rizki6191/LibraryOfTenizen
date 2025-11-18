@@ -19,8 +19,6 @@ const BorrowingContent = ({
     };
 
     const getBorrowingStatus = (borrowing) => {
-        const today = new Date();
-        const dueDate = new Date(borrowing.due_date);
         const returnDate = borrowing.return_date ? new Date(borrowing.return_date) : null;
         
         if (returnDate) {
@@ -28,13 +26,6 @@ const BorrowingContent = ({
                 text: 'Dikembalikan',
                 class: 'bg-blue-100 text-blue-700',
                 icon: '✅'
-            };
-        }
-        if (today > dueDate) {
-            return {
-                text: 'Terlambat',
-                class: 'bg-red-100 text-red-700',
-                icon: '⚠️'
             };
         }
         return {
@@ -87,7 +78,6 @@ const BorrowingContent = ({
                                 <th className="text-left py-4 px-4 font-semibold text-sm" style={{ color: '#442D1C' }}>Penulis</th>
                                 <th className="text-left py-4 px-4 font-semibold text-sm" style={{ color: '#442D1C' }}>Tanggal Pinjam</th>
                                 <th className="text-left py-4 px-4 font-semibold text-sm" style={{ color: '#442D1C' }}>Batas Kembali</th>
-                                <th className="text-left py-4 px-4 font-semibold text-sm" style={{ color: '#442D1C' }}>Tanggal Kembali</th>
                                 <th className="text-left py-4 px-4 font-semibold text-sm" style={{ color: '#442D1C' }}>Status</th>
                             </tr>
                         </thead>
@@ -127,11 +117,10 @@ const BorrowingContent = ({
                                         <td className="py-4 px-4 text-sm">
                                             {borrowing.book?.author || 'Penulis tidak tersedia'}
                                         </td>
-                                        <td className="py-4 px-4 text-sm">{formatDate(borrowing.borrow_date)}</td>
-                                        <td className="py-4 px-4 text-sm">{formatDate(borrowing.due_date)}</td>
                                         <td className="py-4 px-4 text-sm">
-                                            {borrowing.return_date ? formatDate(borrowing.return_date) : '-'}
+                                            {borrowing.borrow_date ? formatDate(borrowing.borrow_date) : formatDate(borrowing.created_at)}
                                         </td>
+                                        <td className="py-4 px-4 text-sm">{formatDate(borrowing.due_date)}</td>
                                         <td className="py-4 px-4">
                                             <span className={`px-3 py-1 rounded-full text-xs font-medium ${status.class}`}>
                                                 {status.icon} {status.text}
