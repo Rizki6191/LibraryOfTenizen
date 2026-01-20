@@ -2,11 +2,11 @@ import React from 'react';
 import { Search, Book, Plus } from 'lucide-react';
 
 const COVER_STYLES = [
-    'linear-gradient(to bottom right, #E8D1A7, #442D1C)', 
-    'linear-gradient(to bottom right, #2dd4bf, #06b6d4)', 
-    'linear-gradient(to bottom right, #1f2937, #111827)', 
-    'linear-gradient(to bottom right, #059669, #10b981)', 
-    'linear-gradient(to bottom right, #a855f7, #ec4899)', 
+    'linear-gradient(to bottom right, #E8D1A7, #442D1C)',
+    'linear-gradient(to bottom right, #2dd4bf, #06b6d4)',
+    'linear-gradient(to bottom right, #1f2937, #111827)',
+    'linear-gradient(to bottom right, #059669, #10b981)',
+    'linear-gradient(to bottom right, #a855f7, #ec4899)',
 ];
 
 const getBookCoverStyle = (id) => {
@@ -41,11 +41,10 @@ const BooksContent = ({
     return (
         <>
             {isError && (
-                <div className={`p-4 mb-6 rounded-xl font-medium ${
-                    isError.includes("berhasil") 
+                <div className={`p-4 mb-6 rounded-xl font-medium ${isError.includes("berhasil")
                         ? "bg-green-100 border border-green-300 text-green-800"
                         : "bg-yellow-100 border border-yellow-300 text-yellow-800"
-                }`}>
+                    }`}>
                     <p>{isError.includes("berhasil") ? "✅" : "⚠️"} {isError}</p>
                 </div>
             )}
@@ -93,11 +92,10 @@ const BooksContent = ({
                             <button
                                 key={cat.id}
                                 onClick={() => setSelectedCategory(cat.id)}
-                                className={`flex items-center gap-2 px-4 py-2 rounded-full whitespace-nowrap font-medium transition-all text-sm ${
-                                        selectedCategory === cat.id
-                                            ? 'text-white shadow-lg'
-                                            : 'bg-gray-100 text-gray-600 hover:bg-orange-50'
-                                }`}
+                                className={`flex items-center gap-2 px-4 py-2 rounded-full whitespace-nowrap font-medium transition-all text-sm ${selectedCategory === cat.id
+                                        ? 'text-white shadow-lg'
+                                        : 'bg-gray-100 text-gray-600 hover:bg-orange-50'
+                                    }`}
                                 style={selectedCategory === cat.id ? { background: 'linear-gradient(90deg, #E8D1A7, #442D1C)' } : {}}
                             >
                                 <span>{cat.name}</span>
@@ -105,13 +103,13 @@ const BooksContent = ({
                         ))}
                     </div>
                 </div>
-                
+
                 {/* Tampilan Buku Horizontal dengan Scroll */}
                 <div>
-                    <div 
+                    <div
                         className="flex gap-4 lg:gap-6 overflow-x-auto pb-6 scroll-smooth"
-                        style={{ 
-                            scrollbarWidth: 'none', 
+                        style={{
+                            scrollbarWidth: 'none',
                             msOverflowStyle: 'none',
                             scrollBehavior: 'smooth'
                         }}
@@ -171,6 +169,7 @@ const BooksContent = ({
                                 </p>
                             </div>
                         )}
+
                     </div>
                 </div>
             </div>

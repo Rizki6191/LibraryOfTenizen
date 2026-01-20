@@ -37,12 +37,6 @@ Library Of Tenizen (LOT) adalah platform perpustakaan digital modern yang diranc
 - Database (MySQL)
 
 ## 🚀 Panduan Instalasi & Penggunaan
-### 🖥️ Instalasi & Menjalankan Frontend
-    cd frontend
-    npm install
-    npm run dev
-    # Akses http://localhost:5173
-
 ### 🗄️ Instalasi & Menjalankan Backend
     cd backend
     composer install
@@ -59,6 +53,11 @@ Library Of Tenizen (LOT) adalah platform perpustakaan digital modern yang diranc
     php artisan migrate
     php artisan serve
 
+### 🖥️ Instalasi & Menjalankan Frontend
+    cd frontend
+    npm install
+    npm run dev
+    # Akses http://localhost:5173
 
 ## LINK FIGMA
     https://www.figma.com/design/W53Vmh77YxJOwXaeXIWGwb/Untitled?node-id=0-1&p=f&t=xATjnpj9Te8KRbSR-0

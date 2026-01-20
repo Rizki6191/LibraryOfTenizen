@@ -1,5 +1,5 @@
 import React from 'react';
-import { Edit, Trash2, RotateCcw, Save, Hash, CalendarDays, Book, Clock, CheckCircle, AlertCircle } from 'lucide-react';
+import { Edit, Trash2, RotateCcw, Save, Hash, CalendarDays, Book, Clock, CheckCircle, AlertCircle, X } from 'lucide-react';
 
 const BookModal = ({
     selectedBook,
@@ -39,33 +39,14 @@ const BookModal = ({
                             {isEditing ? 'Edit Buku' : 'Detail Buku'}
                         </h2>
                         <div className="flex items-center gap-2">
-                            {userData.role === 'admin' && !isEditing && (
-                                <>
-                                    <button
-                                        onClick={handleDoubleClickEdit}
-                                        className="p-2 hover:bg-blue-50 rounded-lg transition-colors text-blue-600"
-                                        title="Edit buku"
-                                    >
-                                        <Edit className="w-5 h-5" />
-                                    </button>
-                                    <button
-                                        onClick={handleDeleteBook}
-                                        className="p-2 hover:bg-red-50 rounded-lg transition-colors text-red-600"
-                                        title="Hapus buku"
-                                    >
-                                        <Trash2 className="w-5 h-5" />
-                                    </button>
-                                </>
-                            )}
-                            {isEditing && (
-                                <button
-                                    onClick={handleCancelEdit}
-                                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-600"
-                                    title="Batal edit"
-                                >
-                                    <RotateCcw className="w-5 h-5" />
-                                </button>
-                            )}
+                            {/* Tombol X untuk tutup di posisi edit/delete sebelumnya */}
+                            <button
+                                onClick={handleCloseBookModal}
+                                className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-600"
+                                title="Tutup"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -173,33 +154,56 @@ const BookModal = ({
                                         </div>
                                     </div>
                                     <div className="flex gap-3 pt-4">
-                                        <button
-                                            onClick={handleCancelEdit}
-                                            className="flex-1 py-3 px-6 border border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition-colors"
-                                        >
-                                            Batal
-                                        </button>
-                                        <button
-                                            onClick={handleUpdateBook}
-                                            disabled={isSaving}
-                                            className={`flex-1 py-3 px-6 rounded-xl font-semibold transition-colors ${
-                                                isSaving
-                                                    ? 'bg-amber-300 text-white cursor-not-allowed'
-                                                    : 'bg-amber-500 text-white hover:bg-amber-600'
-                                            }`}
-                                        >
-                                            {isSaving ? (
-                                                <div className="flex items-center justify-center gap-2">
-                                                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-                                                    <span>Menyimpan...</span>
-                                                </div>
-                                            ) : (
-                                                <div className="flex items-center justify-center gap-2">
-                                                    <Save className="w-5 h-5" />
-                                                    <span>Simpan Perubahan</span>
-                                                </div>
-                                            )}
-                                        </button>
+                                        {/* Tombol Edit/Delete dipindahkan ke sini */}
+                                        {userData.role === 'admin' && !isEditing && (
+                                            <>
+                                                <button
+                                                    onClick={handleDoubleClickEdit}
+                                                    className="flex-1 py-3 px-6 border border-blue-500 text-blue-600 rounded-xl font-semibold hover:bg-blue-50 transition-colors flex items-center justify-center gap-2"
+                                                >
+                                                    <Edit className="w-5 h-5" />
+                                                    <span>Edit Buku</span>
+                                                </button>
+                                                <button
+                                                    onClick={handleDeleteBook}
+                                                    className="flex-1 py-3 px-6 border border-red-500 text-red-600 rounded-xl font-semibold hover:bg-red-50 transition-colors flex items-center justify-center gap-2"
+                                                >
+                                                    <Trash2 className="w-5 h-5" />
+                                                    <span>Hapus Buku</span>
+                                                </button>
+                                            </>
+                                        )}
+                                        {isEditing && (
+                                            <>
+                                                <button
+                                                    onClick={handleCancelEdit}
+                                                    className="flex-1 py-3 px-6 border border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition-colors"
+                                                >
+                                                    Batal
+                                                </button>
+                                                <button
+                                                    onClick={handleUpdateBook}
+                                                    disabled={isSaving}
+                                                    className={`flex-1 py-3 px-6 rounded-xl font-semibold transition-colors ${
+                                                        isSaving
+                                                            ? 'bg-amber-300 text-white cursor-not-allowed'
+                                                            : 'bg-amber-500 text-white hover:bg-amber-600'
+                                                    }`}
+                                                >
+                                                    {isSaving ? (
+                                                        <div className="flex items-center justify-center gap-2">
+                                                            <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                                                            <span>Menyimpan...</span>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="flex items-center justify-center gap-2">
+                                                            <Save className="w-5 h-5" />
+                                                            <span>Simpan Perubahan</span>
+                                                        </div>
+                                                    )}
+                                                </button>
+                                            </>
+                                        )}
                                     </div>
                                 </div>
                             ) : (
@@ -271,12 +275,25 @@ const BookModal = ({
 
                                     {/* Tombol Aksi */}
                                     <div className="flex gap-3 pt-4">
-                                        <button
-                                            onClick={handleCloseBookModal}
-                                            className="flex-1 py-3 px-6 border border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition-colors"
-                                        >
-                                            Tutup
-                                        </button>
+                                        {/* Tombol Edit/Delete dipindahkan ke sini */}
+                                        {userData.role === 'admin' && (
+                                            <>
+                                                <button
+                                                    onClick={handleDoubleClickEdit}
+                                                    className="flex-1 py-3 px-6 border border-blue-500 text-blue-600 rounded-xl font-semibold hover:bg-blue-50 transition-colors flex items-center justify-center gap-2"
+                                                >
+                                                    <Edit className="w-5 h-5" />
+                                                    <span>Edit Buku</span>
+                                                </button>
+                                                <button
+                                                    onClick={handleDeleteBook}
+                                                    className="flex-1 py-3 px-6 border border-red-500 text-red-600 rounded-xl font-semibold hover:bg-red-50 transition-colors flex items-center justify-center gap-2"
+                                                >
+                                                    <Trash2 className="w-5 h-5" />
+                                                    <span>Hapus Buku</span>
+                                                </button>
+                                            </>
+                                        )}
                                         {userData.role === 'member' && (
                                             <button
                                                 onClick={() => handleBorrowBook(selectedBook.id)}
