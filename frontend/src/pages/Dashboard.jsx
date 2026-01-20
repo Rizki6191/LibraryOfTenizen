@@ -208,7 +208,9 @@ const Dashboard = () => {
                 title: book.title, 
                 author: book.author,
                 description: book.description || `Buku ${book.title} karya ${book.author}`,
-                cover: book.cover_image || `linear-gradient(to bottom right, #E8D1A7, #442D1C)`,
+                cover: book.cover_image 
+                    ? `http://127.0.0.1:8000/storage/${book.cover_image}` // ✅ Full URL
+                    : `linear-gradient(to bottom right, #E8D1A7, #442D1C)`,
                 category: book.category?.name || 'Unknown',
                 category_id: book.category_id,
                 featured: index < 3,
@@ -412,69 +414,93 @@ const Dashboard = () => {
 
     // --- Create Book Handler ---
     const handleCreateBook = async () => {
-        setIsSaving(true);
-        try {
-            const token = localStorage.getItem('userToken');
-            const response = await axios.post(
-                BOOKS_API_URL,
-                {
-                    ...newBookData,
-                    category_id: parseInt(newBookData.category_id)
-                },
-                {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                        Accept: 'application/json'
-                    }
-                }
-            );
-            if (response.data.success) {
-                const newBook = response.data.data;
-                if (newBook) {
-                    const processedNewBook = {
-                        id: newBook.id,
-                        title: newBook.title,
-                        author: newBook.author,
-                        description: newBook.description || `Buku ${newBook.title} karya ${newBook.author}`,
-                        cover: `linear-gradient(to bottom right, #E8D1A7, #442D1C)`,
-                        category: categories.find(c => c.id === newBook.category_id)?.name || 'Unknown',
-                        featured: false,
-                        stock: newBook.stock || 0,
-                        category_id: newBook.category_id,
-                        published_year: newBook.published_year,
-                        isbn: newBook.isbn,
-                        created_at: newBook.created_at,
-                        updated_at: newBook.updated_at,
-                        cover_image: newBook.cover_image
-                    };
-                    setBooks(prevBooks => [processedNewBook, ...prevBooks]);
-                }
-                setIsError("Buku berhasil ditambahkan!");
-                setNewBookData({
-                    title: '',
-                    author: '',
-                    description: '',
-                    category_id: categories.length > 0 ? categories[0].id : 1,
-                    stock: 1,
-                    published_year: new Date().getFullYear(),
-                    isbn: ''
-                });
-                setTimeout(() => {
-                    setShowCreateModal(false);
-                    setActiveMenu('books');
-                    setSelectedCategory('all');
-                }, 100);
-                setTimeout(() => { setIsError(null); }, 2500);
-            } else {
-                setIsError(response.data.message || "Gagal menambahkan buku.");
-            }
-        } catch (error) {
-            console.error("Error creating book:", error);
-            setIsError(error.response?.data?.message || "Terjadi kesalahan saat menambahkan buku.");
-        } finally {
-            setIsSaving(false);
+    setIsSaving(true);
+    try {
+        const token = localStorage.getItem('userToken');
+        
+        // Buat FormData untuk support file upload
+        const formData = new FormData();
+        formData.append('title', newBookData.title);
+        formData.append('author', newBookData.author);
+        formData.append('description', newBookData.description || '');
+        formData.append('category_id', parseInt(newBookData.category_id));
+        formData.append('stock', newBookData.stock || 1);
+        
+        if (newBookData.published_year) {
+            formData.append('published_year', newBookData.published_year);
         }
-    };
+        
+        if (newBookData.isbn) {
+            formData.append('isbn', newBookData.isbn);
+        }
+        
+        // Append gambar jika ada
+        if (newBookData.cover_image instanceof File) {
+            formData.append('cover_image', newBookData.cover_image);
+        }
+        
+        const response = await axios.post(
+            BOOKS_API_URL,
+            formData, // <-- Pakai FormData bukan object biasa
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    Accept: 'application/json',
+                    'Content-Type': 'multipart/form-data' // <-- Header untuk file upload
+                }
+            }
+        );
+        
+        if (response.data.status) { // Backend kamu pakai 'status' bukan 'success'
+            const newBook = response.data.data;
+            if (newBook) {
+                const processedNewBook = {
+                    id: newBook.id,
+                    title: newBook.title,
+                    author: newBook.author,
+                    description: newBook.description || `Buku ${newBook.title} karya ${newBook.author}`,
+                    cover: newBook.cover_image 
+                        ? `http://127.0.0.1:8000/storage/${newBook.cover_image}` // ✅ Full URL path
+                        : `linear-gradient(to bottom right, #E8D1A7, #442D1C)`,
+                    category: categories.find(c => c.id === newBook.category_id)?.name || 'Unknown',
+                    featured: false,
+                    stock: newBook.stock || 0,
+                    category_id: newBook.category_id,
+                    published_year: newBook.published_year,
+                    isbn: newBook.isbn,
+                    created_at: newBook.created_at,
+                    updated_at: newBook.updated_at,
+                    cover_image: newBook.cover_image
+                };
+                setBooks(prevBooks => [processedNewBook, ...prevBooks]);
+            }
+            setIsError("Buku berhasil ditambahkan!");
+            setNewBookData({
+                title: '',
+                author: '',
+                description: '',
+                category_id: categories.length > 0 ? categories[0].id : 1,
+                stock: 1,
+                published_year: new Date().getFullYear(),
+                isbn: '',
+                cover_image: null // <-- Reset cover_image
+            });
+            setTimeout(() => {
+                setShowCreateModal(false);
+                setActiveMenu('books');
+                setSelectedCategory('all');
+            }, 100);
+            setTimeout(() => { setIsError(null); }, 2500);
+        } else {
+            setIsError(response.data.message || "Gagal menambahkan buku.");
+        }
+    } catch (error) {
+        console.error("Error creating book:", error);
+        setIsError(error.response?.data?.message || "Terjadi kesalahan saat menambahkan buku.");
+    } finally {
+        setIsSaving(false);
+    }
+};
 
     // --- Borrow Book Handler ---
     const handleBorrowBook = async (bookId) => {

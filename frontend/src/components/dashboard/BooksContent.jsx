@@ -124,9 +124,34 @@ const BooksContent = ({
                                     onClick={() => handleBookClick(book)}
                                 >
                                     <div 
-                                        className="rounded-xl shadow-md aspect-[3/4] p-4 flex flex-col justify-end transform group-hover:scale-105 group-hover:shadow-xl transition-all duration-300"
-                                        style={{ background: book.cover || getBookCoverStyle(book.id) }}
+                                        className="rounded-xl shadow-md aspect-[3/4] overflow-hidden transform group-hover:scale-105 group-hover:shadow-xl transition-all duration-300"
                                     >
+                                        {book.cover_image ? (
+                                            <img 
+                                                src={`http://127.0.0.1:8000/storage/${book.cover_image}`}
+                                                alt={book.title}
+                                                className="w-full h-full object-cover"
+                                                onError={(e) => {
+                                                    e.target.style.display = 'none';
+                                                    e.target.parentElement.style.background = getBookCoverStyle(book.id);
+                                                }}
+                                            />
+                                        ) : (
+                                            <div 
+                                                className="w-full h-full p-4 flex flex-col justify-end"
+                                                style={{ background: getBookCoverStyle(book.id) }}
+                                            >
+                                                <div className="text-white">
+                                                    <p className="text-xs opacity-90 mb-1 truncate">{book.author}</p>
+                                                    <h4 className="text-sm font-bold line-clamp-2 mb-1">{book.title}</h4>
+                                                    <div className="flex justify-between items-center text-xs opacity-70">
+                                                        <span>Stok: {book.stock}</span>
+                                                        <span className="capitalize truncate max-w-16">{book.category}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
                                         <div className="text-white">
                                             <p className="text-xs opacity-90 mb-1 truncate">{book.author}</p>
                                             <h4 className="text-sm font-bold line-clamp-2 mb-1">{book.title}</h4>
@@ -136,7 +161,6 @@ const BooksContent = ({
                                             </div>
                                         </div>
                                     </div>
-                                </div>
                             ))
                         ) : (
                             <div className="w-full text-center py-12">

@@ -1,5 +1,5 @@
-import React from 'react';
-import { X, Save } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, Save, Upload, Image as ImageIcon } from 'lucide-react';
 
 const CreateBookModal = ({
     showCreateModal,
@@ -10,7 +10,41 @@ const CreateBookModal = ({
     isSaving,
     handleCreateBook
 }) => {
+    const [previewImage, setPreviewImage] = useState(null);
+
     if (!showCreateModal) return null;
+
+    const handleImageChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            // Validasi tipe file
+            if (!file.type.startsWith('image/')) {
+                alert('File harus berupa gambar!');
+                return;
+            }
+
+            // Validasi ukuran file (max 2MB)
+            if (file.size > 2 * 1024 * 1024) {
+                alert('Ukuran file maksimal 2MB!');
+                return;
+            }
+
+            // Set file ke state
+            setNewBookData({...newBookData, cover_image: file});
+
+            // Buat preview
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setPreviewImage(reader.result);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const removeImage = () => {
+        setNewBookData({...newBookData, cover_image: null});
+        setPreviewImage(null);
+    };
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -19,7 +53,10 @@ const CreateBookModal = ({
                     <div className="flex items-center justify-between">
                         <h2 className="text-2xl font-bold" style={{ color: '#442D1C' }}>Tambah Buku Baru</h2>
                         <button 
-                            onClick={() => setShowCreateModal(false)}
+                            onClick={() => {
+                                setShowCreateModal(false);
+                                setPreviewImage(null);
+                            }}
                             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                         >
                             <X className="w-5 h-5 text-gray-500" />
@@ -28,6 +65,47 @@ const CreateBookModal = ({
                 </div>
                 <div className="p-6">
                     <div className="space-y-4">
+                        {/* Upload Cover Image */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Cover Buku</label>
+                            
+                            {!previewImage ? (
+                                <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:border-amber-400 transition-colors">
+                                    <input
+                                        type="file"
+                                        id="cover-upload"
+                                        accept="image/*"
+                                        onChange={handleImageChange}
+                                        className="hidden"
+                                    />
+                                    <label 
+                                        htmlFor="cover-upload" 
+                                        className="cursor-pointer flex flex-col items-center"
+                                    >
+                                        <Upload className="w-12 h-12 text-gray-400 mb-2" />
+                                        <p className="text-sm text-gray-600 mb-1">
+                                            <span className="text-amber-600 font-semibold">Klik untuk upload</span> atau drag & drop
+                                        </p>
+                                        <p className="text-xs text-gray-500">PNG, JPG, JPEG (max. 2MB)</p>
+                                    </label>
+                                </div>
+                            ) : (
+                                <div className="relative">
+                                    <img 
+                                        src={previewImage} 
+                                        alt="Preview" 
+                                        className="w-full h-48 object-cover rounded-xl"
+                                    />
+                                    <button
+                                        onClick={removeImage}
+                                        className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition-colors"
+                                    >
+                                        <X className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Judul Buku *</label>
                             <input
@@ -110,7 +188,10 @@ const CreateBookModal = ({
                     </div>
                     <div className="flex gap-3 mt-6">
                         <button
-                            onClick={() => setShowCreateModal(false)}
+                            onClick={() => {
+                                setShowCreateModal(false);
+                                setPreviewImage(null);
+                            }}
                             className="flex-1 py-3 px-6 border border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition-colors"
                         >
                             Batal

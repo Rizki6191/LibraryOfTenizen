@@ -74,14 +74,24 @@ const BookModal = ({
                     <div className="flex flex-wrap gap-6">
                         {/* 1. Gambar di Kiri (Lebih besar di desktop: 1/4 lebar) */}
                         <div className="flex-shrink-0 lg:w-1/4 flex justify-center lg:justify-start">
-                            <div 
-                                className="rounded-2xl shadow-lg w-40 h-52 flex items-center justify-center"
-                                style={{ background: selectedBook.cover }}
-                            >
-                                <div className="text-white text-center p-3">
-                                    <p className="text-xs opacity-90 mb-1">{selectedBook.author}</p>
-                                    <h3 className="text-sm font-bold leading-tight">{selectedBook.title}</h3>
-                                </div>
+                            <div className="rounded-2xl shadow-lg w-40 h-52 overflow-hidden">
+                                {selectedBook.cover_image ? (
+                                    <img 
+                                        src={`http://127.0.0.1:8000/storage/${selectedBook.cover_image}`}
+                                        alt={selectedBook.title}
+                                        className="w-full h-full object-cover"
+                                    />
+                                ) : (
+                                    <div 
+                                        className="w-full h-full flex items-center justify-center"
+                                        style={{ background: selectedBook.cover }}
+                                    >
+                                        <div className="text-white text-center p-3">
+                                            <p className="text-xs opacity-90 mb-1">{selectedBook.author}</p>
+                                            <h3 className="text-sm font-bold leading-tight">{selectedBook.title}</h3>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
                         
