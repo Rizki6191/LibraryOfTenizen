@@ -45,10 +45,21 @@ class BookModelController extends Controller
             'title' => 'required|string|max:255',             
             'author' => 'required|string|max:100',            
             'description' => 'nullable|string',              
-            'cover_image' => 'nullable|string',              
+            'cover_image' => 'nullable',              
             'category_id' => 'required|exists:categories,id',
             'stock' => 'nullable|integer|min:0', 
         ]);
+
+        // Jika FILE diupload
+        if ($request->hasFile('cover_image')) {
+            $path = $request->file('cover_image')->store('books', 'public');
+            $validate['cover_image'] = $path;
+        }
+
+        // Jika berupa URL
+        elseif ($request->cover_image && filter_var($request->cover_image, FILTER_VALIDATE_URL)) {
+            $validate['cover_image'] = $request->cover_image;
+        }
 
         $book = BookModel::create($validate);
         return response()->json([
@@ -108,10 +119,15 @@ class BookModelController extends Controller
             'title' => 'nullable|string|max:255',             
             'author' => 'nullable|string|max:100',            
             'description' => 'nullable|string',              
-            'cover_image' => 'nullable|string',              
+            'cover_image' => 'nullable',              
             'category_id' => 'nullable|exists:categories,id',
             'stock' => 'nullable|integer|min:0', 
         ]);
+
+        if ($request->hasFile('cover_image')) {
+            $path = $request->file('cover_image')->store('books', 'public');
+            $validated['cover_image'] = $path;
+        }
 
         // Update data
         $book->update($validated);
