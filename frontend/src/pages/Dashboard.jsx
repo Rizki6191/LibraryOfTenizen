@@ -16,7 +16,7 @@ import UserModal from '../components/dashboard/UserModal';
 import { CATEGORY_ICON_MAPPING } from '../utils/IconMapping';
 
 // API Configuration
-const API_BASE_URL = "http://127.0.0.1:8000/api";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 const BOOKS_API_URL = `${API_BASE_URL}/books`;
 const USER_PROFILE_URL = `${API_BASE_URL}/users`;
 const BORROWING_API_URL = `${API_BASE_URL}/borrowing`;

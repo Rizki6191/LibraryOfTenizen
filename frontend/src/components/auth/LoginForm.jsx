@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import AuthLayout from "./AuthLayout";
 
-const API_URL = "http://127.0.0.1:8000/api/login";
+const API_URL = import.meta.env.VITE_API_BASE_URL + "/login";
 
 const LoginForm = () => {
     const [formData, setFormData] = useState({
