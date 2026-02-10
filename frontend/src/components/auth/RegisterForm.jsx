@@ -39,7 +39,7 @@ const RegisterForm = () => {
         const value = e.target.value.replace(/\D/g, ''); // Hanya angka
         setFormData(prev => ({
             ...prev,
-            nis: value.slice(0, 7) // Maksimal 7 digit
+            nis: value.slice(0, 5) // Maksimal 5 digit
         }));
     };
 
@@ -232,7 +232,7 @@ const RegisterForm = () => {
                                     name="nis"
                                     value={formData.nis}
                                     onChange={handleNisChange}
-                                    maxLength="7"
+                                    maxLength="5"
                                     pattern="\d{7}"
                                     inputMode="numeric"
                                     required 
