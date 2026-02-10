@@ -51,7 +51,7 @@ class AuthController extends Controller
 
         $user = User::where('email', $validate['email'])->first();
 
-        //nambahin validasi password
+        // Cek user dan password
         if(!$user || !Hash::check($request->password, $user->password)) {
             return response()->json([
                 'success' => false,

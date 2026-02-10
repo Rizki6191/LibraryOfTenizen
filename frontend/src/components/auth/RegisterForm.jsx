@@ -1,8 +1,9 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
+import AuthLayout from "./AuthLayout";
 
-const API_URL = "http://127.0.0.1:8000/api/register";
+const API_URL = import.meta.env.VITE_API_BASE_URL + "/register";
 
 const RegisterForm = () => {
     const [formData, setFormData] = useState({
@@ -23,47 +24,36 @@ const RegisterForm = () => {
 
     const navigate = useNavigate();
 
-    // Handle change untuk semua input
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData((prev) => ({
             ...prev,
             [name]: value,
         }));
-        // Clear error ketika user mulai mengetik
         if (error) setError(null);
     };
 
-    // Handle NIS input - hanya angka
     const handleNisChange = (e) => {
-        const value = e.target.value.replace(/\D/g, ''); // Hanya angka
+        const value = e.target.value.replace(/\D/g, '');
         setFormData(prev => ({
             ...prev,
+<<<<<<< HEAD
             nis: value.slice(0, 5) // Maksimal 5 digit
+=======
+            nis: value.slice(0, 7)
+>>>>>>> 4b75b218a26300e538c8abb640b2837caccd267b
         }));
     };
 
-    // Validasi form
     const validateForm = () => {
-        // Validasi password match
         if (formData.password !== formData.confirmPassword) {
-            setError("Kata Sandi dan Konfirmasi Kata Sandi tidak cocok.");
+            setError("Konfirmasi kata sandi tidak cocok.");
             return false;
         }
-
-        // Validasi panjang password
         if (formData.password.length < 6) {
-            setError("Kata sandi harus minimal 6 karakter.");
+            setError("Kata sandi minimal 6 karakter.");
             return false;
         }
-
-        // Validasi email format
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(formData.email)) {
-            setError("Format email tidak valid.");
-            return false;
-        }
-
         return true;
     };
 
@@ -72,73 +62,126 @@ const RegisterForm = () => {
         setError(null);
         setSuccess(false);
 
-        // Validasi client-side
-        if (!validateForm()) {
-            return;
-        }
-
+        if (!validateForm()) return;
         setLoading(true);
 
-        // Prepare data untuk API (exclude confirmPassword)
         const { confirmPassword, ...apiPayload } = formData;
 
         try {
             const response = await axios.post(API_URL, apiPayload);
-            
             if (response.data.success) {
-                // Registration successful
                 setSuccess(true);
                 setTimeout(() => {
-                    navigate("/login", { 
+                    navigate("/login", {
                         state: { message: "Pendaftaran berhasil! Silakan masuk." }
                     });
                 }, 1500);
             } else {
-                setError(response.data.message || "Registrasi gagal karena kesalahan yang tidak diketahui.");
+                setError(response.data.message || "Registrasi gagal.");
             }
         } catch (err) {
             console.error("Registration API Error:", err);
-            if (err.response?.data?.message) {
-                setError(err.response.data.message);
-            } else {
-                setError("Terjadi kesalahan jaringan. Periksa koneksi internet Anda.");
-            }
+            setError(err.response?.data?.message || "Terjadi kesalahan jaringan.");
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full border border-amber-200">
-                {/* Header */}
-                <div className="text-center mb-8">
-                    <div className="mb-4">
-                        <div className="bg-amber-700 text-white w-16 h-16 rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-2">
-                            LOT
+        <AuthLayout
+            title="Daftar Akun"
+            subtitle="Lengkapi data diri untuk bergabung"
+        >
+            <form onSubmit={handleSubmit} className="space-y-5">
+                {/* Status Messages */}
+                {success && (
+                    <div className="bg-green-50 border border-green-100 rounded-xl p-4 flex items-start gap-3 text-green-700 text-sm animate-fade-in">
+                        <svg className="w-5 h-5 text-green-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        <span className="font-medium">Pendaftaran berhasil! Mengalihkan...</span>
+                    </div>
+                )}
+
+                {error && (
+                    <div className="bg-red-50 border border-red-100 rounded-xl p-4 flex items-start gap-3 text-red-700 text-sm animate-shake">
+                        <svg className="w-5 h-5 text-red-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span className="font-medium leading-relaxed">{error}</span>
+                    </div>
+                )}
+
+                <div className="space-y-4">
+                    {/* Basic Info */}
+                    <div>
+                        <label className="block text-primary-900 text-sm font-semibold mb-2">Nama Lengkap</label>
+                        <div className="input-group">
+                            <div className="input-icon"><svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg></div>
+                            <input type="text" className="form-input" placeholder="Nama Lengkap" name="name" value={formData.name} onChange={handleChange} required disabled={loading} />
                         </div>
-                        <h1 className="text-amber-800 text-2xl font-bold">
-                            Library Of Tenizen
-                        </h1>
                     </div>
 
-                    {/* Login/Register Tabs */}
-                    <div className="flex bg-amber-100 rounded-lg p-1 mb-6">
-                        <Link 
-                            to="/login" 
-                            className="flex-1 text-amber-700 py-2 px-4 rounded-md text-sm font-semibold text-center hover:bg-amber-200 transition-colors"
-                        >
-                            Login
-                        </Link>
-                        <Link 
-                            to="/register" 
-                            className="flex-1 bg-amber-700 text-white py-2 px-4 rounded-md text-sm font-semibold text-center transition-colors"
-                        >
-                            Register
-                        </Link>
+                    <div>
+                        <label className="block text-primary-900 text-sm font-semibold mb-2">Email</label>
+                        <div className="input-group">
+                            <div className="input-icon"><svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg></div>
+                            <input type="email" className="form-input" placeholder="nama@email.com" name="email" value={formData.email} onChange={handleChange} required disabled={loading} />
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-primary-900 text-sm font-semibold mb-2">NIS</label>
+                            <div className="input-group">
+                                <div className="input-icon"><svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg></div>
+                                <input type="text" className="form-input" placeholder="NIS" name="nis" value={formData.nis} onChange={handleNisChange} maxLength="7" required disabled={loading} />
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <label className="block text-primary-900 text-sm font-semibold mb-2">Kelas</label>
+                                <select className="form-input !pl-3" name="grade" value={formData.grade} onChange={handleChange} required disabled={loading}>
+                                    <option value="">Pilih</option>
+                                    <option value="10">10</option>
+                                    <option value="11">11</option>
+                                    <option value="12">12</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-primary-900 text-sm font-semibold mb-2">Jurusan</label>
+                                <select className="form-input !pl-3" name="major" value={formData.major} onChange={handleChange} required disabled={loading}>
+                                    <option value="">Pilih</option>
+                                    <option value="RPL">RPL</option>
+                                    <option value="BR">BR</option>
+                                    <option value="BD">BD</option>
+                                    <option value="AKL">AKL</option>
+                                    <option value="ML">ML</option>
+                                    <option value="MP">MP</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-primary-900 text-sm font-semibold mb-2">Kata Sandi</label>
+                            <div className="input-group">
+                                <input type={showPassword ? "text" : "password"} className="form-input !pl-4" placeholder="••••••••" name="password" value={formData.password} onChange={handleChange} required disabled={loading} minLength="6" />
+                                <button type="button" className="absolute inset-y-0 right-0 pr-3 text-primary-400" onClick={() => setShowPassword(!showPassword)}>{showPassword ? "🙈" : "👁️"}</button>
+                            </div>
+                        </div>
+                        <div>
+                            <label className="block text-primary-900 text-sm font-semibold mb-2">Konfirmasi</label>
+                            <div className="input-group">
+                                <input type={showConfirmPassword ? "text" : "password"} className="form-input !pl-4" placeholder="••••••••" name="confirmPassword" value={formData.confirmPassword} onChange={handleChange} required disabled={loading} minLength="6" />
+                                <button type="button" className="absolute inset-y-0 right-0 pr-3 text-primary-400" onClick={() => setShowConfirmPassword(!showConfirmPassword)}>{showConfirmPassword ? "🙈" : "👁️"}</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
+<<<<<<< HEAD
                 {/* Success Message */}
                 {success && (
                     <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4 flex items-center gap-2 text-green-700 text-sm">
@@ -396,36 +439,19 @@ const RegisterForm = () => {
                         className="w-full bg-amber-700 text-white py-3 px-4 rounded-lg font-semibold hover:bg-amber-800 focus:outline-none focus:ring-2 focus:ring-amber-600 focus:ring-offset-2 transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                         disabled={loading}
                     >
+=======
+                <div className="pt-2">
+                    <button type="submit" className="btn-primary w-full flex items-center justify-center gap-2 group disabled:opacity-70 disabled:cursor-not-allowed" disabled={loading}>
+>>>>>>> 4b75b218a26300e538c8abb640b2837caccd267b
                         {loading ? (
-                            <>
-                                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                                <span>Mendaftarkan...</span>
-                            </>
+                            <><div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div><span>Mendaftarkan...</span></>
                         ) : (
-                            <>
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-                                </svg>
-                                <span>Daftar Sekarang</span>
-                            </>
+                            <><span>Buat Akun Sekarang</span><svg className="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" /></svg></>
                         )}
                     </button>
-
-                    {/* Login Link */}
-                    <div className="text-center">
-                        <p className="text-amber-700 text-sm">
-                            Sudah punya akun?{" "}
-                            <Link 
-                                to="/login" 
-                                className="font-semibold text-amber-600 hover:text-amber-800 transition-colors"
-                            >
-                                Masuk disini
-                            </Link>
-                        </p>
-                    </div>
-                </form>
-            </div>
-        </div>
+                </div>
+            </form>
+        </AuthLayout>
     );
 };
 
