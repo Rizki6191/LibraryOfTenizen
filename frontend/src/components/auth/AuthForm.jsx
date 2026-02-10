@@ -7,6 +7,8 @@ const AuthForm = () => {
         <AuthLayout
             title="Selamat Datang"
             subtitle="Sistem Perpustakaan Digital Berbasis Web"
+            showAuthSwitch={false}
+            showAuthTabs={false}
         >
             <div className="space-y-6">
                 {/* Features List */}
