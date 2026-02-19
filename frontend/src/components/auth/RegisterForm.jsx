@@ -38,7 +38,7 @@ const RegisterForm = () => {
         setFormData(prev => ({
             ...prev,
             nis: value.slice(0, 7)
-        }));
+       }));
     };
 
     const validateForm = () => {
